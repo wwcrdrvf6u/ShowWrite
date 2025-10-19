@@ -16,17 +16,15 @@ namespace ShowWrite
         public SettingsWindow(AppConfig config, List<string> cameras)
         {
             InitializeComponent();
-            _config = config;
-            _cameras = cameras;
+            _config = config ?? new AppConfig();
+            _cameras = cameras ?? new List<string>();
             Loaded += OnLoaded;
         }
 
         private void OnLoaded(object sender, RoutedEventArgs e)
         {
             // 设置版本信息
-#pragma warning disable CS8602 // 解引用可能出现空引用。
             VersionText.Text = Assembly.GetExecutingAssembly().GetName().Version.ToString();
-#pragma warning restore CS8602 // 解引用可能出现空引用。
 
             // 初始化摄像头列表
             CameraComboBox.ItemsSource = _cameras;
@@ -60,7 +58,6 @@ namespace ShowWrite
                 }
             }
 
-
             // 高级设置
             EnableHardwareAccel.IsChecked = _config.EnableHardwareAcceleration;
             EnableFrameProcessing.IsChecked = _config.EnableFrameProcessing;
@@ -70,6 +67,9 @@ namespace ShowWrite
             {
                 FrameRateComboBox.SelectedIndex = _config.FrameRateLimit;
             }
+
+            // 开发者模式设置
+            DeveloperModeCheckBox.IsChecked = _config.DeveloperMode ?? false;
         }
 
         private void MenuList_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -101,7 +101,16 @@ namespace ShowWrite
             _config.EnableFrameProcessing = EnableFrameProcessing.IsChecked ?? false;
             _config.FrameRateLimit = FrameRateComboBox.SelectedIndex;
 
+            // 开发者模式设置
+            _config.DeveloperMode = DeveloperModeCheckBox.IsChecked ?? false;
+
             DialogResult = true;
+            Close();
+        }
+
+        private void CancelButton_Click(object sender, RoutedEventArgs e)
+        {
+            DialogResult = false;
             Close();
         }
 
@@ -121,12 +130,6 @@ namespace ShowWrite
                 // 处理可能的异常（如默认浏览器未设置）
                 System.Windows.MessageBox.Show($"无法打开链接: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
             }
-        }
-
-        private void CancelButton_Click(object sender, RoutedEventArgs e)
-        {
-            DialogResult = false;
-            Close();
         }
     }
 }

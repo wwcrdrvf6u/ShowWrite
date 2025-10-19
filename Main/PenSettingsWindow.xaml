@@ -65,8 +65,10 @@
             <TextBlock x:Name="EraserWidthValue" Text="20" Margin="10,0,0,0" VerticalAlignment="Center"/>
         </StackPanel>
 
+        
+
         <!-- 按钮 -->
-        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Grid.Row="7" Margin="0,20,0,0" Width="180">
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Grid.Row="7" Margin="0,70,0,0" Width="180">
             <Button Content="确定" Width="80" Click="Ok_Click"/>
             <Button Content="取消" Width="80" Margin="5" Click="Cancel_Click"/>
         </StackPanel>

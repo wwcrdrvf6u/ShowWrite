@@ -88,11 +88,17 @@
                                 </StackPanel>
                             </StackPanel>
                         </GroupBox>
+
+                        <GroupBox Header="开发者模式" Margin="0,10,0,0">
+                            <StackPanel Margin="5">
+                                <CheckBox x:Name="DeveloperModeCheckBox" Content="启用开发者模式（显示鼠标速度）" Margin="0,5"/>
+                            </StackPanel>
+                        </GroupBox>
                     </StackPanel>
                 </ScrollViewer>
             </Grid>
 
-            <!-- 关于 (已移除所有斜体样式) -->
+            <!-- 关于 -->
             <Grid x:Name="AboutPanel" Visibility="Collapsed">
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
                     <StackPanel Margin="20">
@@ -104,7 +110,6 @@
                         <TextBlock Text="© 智教联盟" Margin="0,5"/>
                         <TextBlock Text="本软件基于AForge.NET和ZXing库开发" Margin="0,20,0,5"/>
 
-                        <!-- 移除所有斜体样式 -->
                         <TextBlock TextWrapping="Wrap" Margin="0,20,0,0">
                 <Run Text="本次更新的顺利发布，离不开"/>
                 <Run Text="开发者（也就是我）" FontWeight="Bold" Foreground="#FF2C3E50"/>
@@ -132,7 +137,6 @@
 
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,30,0,0">
                             <Button Content="检查更新" Padding="10,5" Margin="0,0,10,0"/>
-                            <!-- 添加了访问官网的事件处理 -->
                             <Button Content="访问官网" Padding="10,5" Click="VisitWebsiteButton_Click"/>
                         </StackPanel>
                     </StackPanel>

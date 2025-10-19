@@ -10,6 +10,7 @@ namespace ShowWrite
         public System.Windows.Media.Color SelectedColor { get; private set; }
         public double SelectedPenWidth { get; private set; }
         public double SelectedEraserWidth { get; private set; }
+        public bool UseTouchAreaForEraser { get; private set; } = false;
 
         public PenSettingsWindow(System.Windows.Media.Color currentColor, double currentPenWidth, double currentEraserWidth)
         {
@@ -27,15 +28,21 @@ namespace ShowWrite
             EraserWidthValue.Text = SelectedEraserWidth.ToString();
 
             // 绑定滑块值变化事件
-            PenWidthSlider.ValueChanged += (s, e) =>
-            {
-                PenWidthValue.Text = ((int)e.NewValue).ToString();
-            };
+            PenWidthSlider.ValueChanged += PenWidthSlider_ValueChanged;
+            EraserWidthSlider.ValueChanged += EraserWidthSlider_ValueChanged;
 
-            EraserWidthSlider.ValueChanged += (s, e) =>
-            {
-                EraserWidthValue.Text = ((int)e.NewValue).ToString();
-            };
+            // 默认使用滑块模式
+            UseTouchAreaForEraser = false;
+        }
+
+        private void PenWidthSlider_ValueChanged(object sender, System.Windows.RoutedPropertyChangedEventArgs<double> e)
+        {
+            PenWidthValue.Text = ((int)e.NewValue).ToString();
+        }
+
+        private void EraserWidthSlider_ValueChanged(object sender, System.Windows.RoutedPropertyChangedEventArgs<double> e)
+        {
+            EraserWidthValue.Text = ((int)e.NewValue).ToString();
         }
 
         private void ColorPreview_MouseDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
