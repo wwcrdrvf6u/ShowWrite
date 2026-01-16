@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 	<PropertyGroup>
 		<OutputType>WinExe</OutputType>
-		<TargetFramework>net8.0-windows</TargetFramework>
+		<TargetFramework>net5.0-windows</TargetFramework>
 		<UseWPF>true</UseWPF>
 		<UseWindowsForms>true</UseWindowsForms>
 		<Nullable>enable</Nullable>
@@ -13,6 +13,7 @@
 		<RepositoryUrl>https://github.com/wwcrdrvf6u/ShowWrite/</RepositoryUrl>
 		<Authors>wwcrdrvf6u</Authors>
 		<SelfContained>false</SelfContained>
+		<Platforms>AnyCPU;x64</Platforms>
 	</PropertyGroup>
 	<ItemGroup>
 	  <Content Include="icon-d1tools.com.ico" />

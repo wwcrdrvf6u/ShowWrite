@@ -35,6 +35,16 @@ namespace ShowWrite
 
         private void LoadConfig()
         {
+            // 界面主题设置
+            foreach (ComboBoxItem item in ThemeComboBox.Items)
+            {
+                if (item.Tag?.ToString() == _config.Theme)
+                {
+                    item.IsSelected = true;
+                    break;
+                }
+            }
+
             // 启动设置
             StartMaximizedCheckBox.IsChecked = _config.StartMaximized;
             AutoStartCameraCheckBox.IsChecked = _config.AutoStartCamera;
@@ -85,6 +95,13 @@ namespace ShowWrite
         private void OkButton_Click(object sender, RoutedEventArgs e)
         {
             // 保存设置到配置对象
+            // 界面主题
+            if (ThemeComboBox.SelectedItem is ComboBoxItem themeItem)
+            {
+                _config.Theme = themeItem.Tag?.ToString() ?? "Light";
+            }
+
+            // 启动设置
             _config.StartMaximized = StartMaximizedCheckBox.IsChecked ?? true;
             _config.AutoStartCamera = AutoStartCameraCheckBox.IsChecked ?? true;
             _config.CameraIndex = CameraComboBox.SelectedIndex;

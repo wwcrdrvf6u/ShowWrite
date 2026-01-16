@@ -1,0 +1,91 @@
+﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- 颜色资源 -->
+    <SolidColorBrush x:Key="WindowBackgroundBrush" Color="#2B2B2B"/>
+    <SolidColorBrush x:Key="ToolbarBackgroundBrush" Color="#001E1E1E"/>
+    <SolidColorBrush x:Key="IconBrush" Color="#FFFFFF"/>
+    <SolidColorBrush x:Key="TextBrush" Color="#FFFFFF"/>
+    <SolidColorBrush x:Key="PopupBackground" Color="#2C3E50"/>
+    <SolidColorBrush x:Key="PopupBorder" Color="#34495E"/>
+    <SolidColorBrush x:Key="ButtonBackground" Color="#3C3C3C"/>
+    <SolidColorBrush x:Key="ButtonBorder" Color="#555555"/>
+    <SolidColorBrush x:Key="ButtonHoverBackground" Color="#505050"/>
+    <SolidColorBrush x:Key="ButtonPressedBackground" Color="#606060"/>
+    <SolidColorBrush x:Key="ToggleButtonCheckedBackground" Color="#2980B9"/>
+    <SolidColorBrush x:Key="ToggleButtonCheckedBorder" Color="#1C6399"/>
+
+    <!-- 按钮基础样式 - 深色主题 -->
+    <Style x:Key="ButtonStyle" TargetType="Button">
+        <Setter Property="Background" Value="{StaticResource ButtonBackground}"/>
+        <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+        <Setter Property="FontSize" Value="14"/>
+        <Setter Property="Width" Value="64"/>
+        <Setter Property="Height" Value="64"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="border" Background="{TemplateBinding Background}" 
+                            BorderBrush="{StaticResource ButtonBorder}" BorderThickness="1" CornerRadius="4">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="border" Property="Background" Value="{StaticResource ButtonHoverBackground}"/>
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="border" Property="Background" Value="{StaticResource ButtonPressedBackground}"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- ToggleButton基础样式 - 深色主题 -->
+    <Style x:Key="ToggleButtonStyle" TargetType="ToggleButton">
+        <Setter Property="Background" Value="{StaticResource ButtonBackground}"/>
+        <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+        <Setter Property="FontSize" Value="14"/>
+        <Setter Property="Width" Value="64"/>
+        <Setter Property="Height" Value="64"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ToggleButton">
+                    <Border x:Name="border" Background="{TemplateBinding Background}" 
+                            BorderBrush="{StaticResource ButtonBorder}" BorderThickness="1" CornerRadius="4">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="border" Property="Background" Value="{StaticResource ButtonHoverBackground}"/>
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="border" Property="Background" Value="{StaticResource ButtonPressedBackground}"/>
+                        </Trigger>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="border" Property="Background" Value="{StaticResource ToggleButtonCheckedBackground}"/>
+                            <Setter TargetName="border" Property="BorderBrush" Value="{StaticResource ToggleButtonCheckedBorder}"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- 移动/画笔/橡皮擦特殊样式 -->
+    <Style x:Key="ToolToggleButtonStyle" TargetType="ToggleButton" BasedOn="{StaticResource ToggleButtonStyle}">
+        <!-- 继承ToggleButtonStyle的所有属性 -->
+    </Style>
+
+    <!-- 照片按钮特殊样式 -->
+    <Style x:Key="PhotoButtonStyle" TargetType="Button" BasedOn="{StaticResource ButtonStyle}">
+        <!-- 继承ButtonStyle的所有属性 -->
+    </Style>
+
+    <!-- 更多按钮样式 - 深色主题 -->
+    <Style x:Key="MoreButtonStyle" TargetType="Button" BasedOn="{StaticResource ButtonStyle}">
+        <!-- 继承ButtonStyle的所有属性 -->
+    </Style>
+
+</ResourceDictionary>

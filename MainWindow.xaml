@@ -4,70 +4,7 @@
         Title="ShowWrite视频展台" WindowState="Maximized" Background="#2B2B2B" WindowStyle="None"
         MouseWheel="Window_MouseWheel" Width="1558">
     <Window.Resources>
-        <!-- 按钮基础样式 -->
-        <Style TargetType="Button">
-            <Setter Property="Background" Value="#2C3E50"/>
-            <Setter Property="Foreground" Value="White"/>
-            <Setter Property="FontSize" Value="14"/>
-            <Setter Property="Width" Value="64"/>
-            <Setter Property="Height" Value="64"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Button">
-                        <Border x:Name="border" Background="{TemplateBinding Background}" 
-                                BorderBrush="#34495E" BorderThickness="1" CornerRadius="4">
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="border" Property="Background" Value="#34495E"/>
-                            </Trigger>
-                            <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="border" Property="Background" Value="#2980B9"/>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
-        <!-- ToggleButton基础样式 -->
-        <Style TargetType="ToggleButton">
-            <Setter Property="Background" Value="#2C3E50"/>
-            <Setter Property="Foreground" Value="White"/>
-            <Setter Property="FontSize" Value="14"/>
-            <Setter Property="Width" Value="64"/>
-            <Setter Property="Height" Value="64"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="ToggleButton">
-                        <Border x:Name="border" Background="{TemplateBinding Background}" 
-                                BorderBrush="#34495E" BorderThickness="1" CornerRadius="4">
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="border" Property="Background" Value="#34495E"/>
-                            </Trigger>
-                            <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="border" Property="Background" Value="#2980B9"/>
-                            </Trigger>
-                            <Trigger Property="IsChecked" Value="True">
-                                <Setter TargetName="border" Property="Background" Value="#2980B9"/>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
-        <!-- 照片按钮特殊样式 -->
-        <Style TargetType="Button" x:Key="PhotoButtonStyle">
-            <Setter Property="Width" Value="64"/>
-            <Setter Property="Height" Value="64"/>
-        </Style>
-
-        <!-- 画笔设置按钮样式 -->
+        <!-- 画笔设置按钮样式（不随主题变化） -->
         <Style TargetType="Button" x:Key="PenSettingsButtonStyle">
             <Setter Property="Width" Value="32"/>
             <Setter Property="Height" Value="32"/>
@@ -76,10 +13,10 @@
             <Setter Property="BorderBrush" Value="#555"/>
         </Style>
 
-        <!-- 更多按钮样式 -->
-        <Style x:Key="MoreButtonStyle" TargetType="Button">
-            <Setter Property="Background" Value="Black"/>
-            <Setter Property="Foreground" Value="White"/>
+        <!-- 按钮基础样式 - 默认白底黑标 -->
+        <Style x:Key="DefaultButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="Foreground" Value="Black"/>
             <Setter Property="FontSize" Value="14"/>
             <Setter Property="Width" Value="64"/>
             <Setter Property="Height" Value="64"/>
@@ -87,21 +24,140 @@
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
                         <Border x:Name="border" Background="{TemplateBinding Background}" 
-                                BorderBrush="#34495E" BorderThickness="1" CornerRadius="4">
+                                BorderBrush="#CCCCCC" BorderThickness="1" CornerRadius="4">
                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="border" Property="Background" Value="#333333"/>
+                                <Setter TargetName="border" Property="Background" Value="#F0F0F0"/>
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="border" Property="Background" Value="#555555"/>
+                                <Setter TargetName="border" Property="Background" Value="#E0E0E0"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
         </Style>
+
+        <!-- ToggleButton基础样式 - 默认白底黑标 -->
+        <Style x:Key="DefaultToggleButtonStyle" TargetType="ToggleButton">
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="Foreground" Value="Black"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Width" Value="64"/>
+            <Setter Property="Height" Value="64"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ToggleButton">
+                        <Border x:Name="border" Background="{TemplateBinding Background}" 
+                                BorderBrush="#CCCCCC" BorderThickness="1" CornerRadius="4">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#F0F0F0"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#E0E0E0"/>
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#2980B9"/>
+                                <Setter TargetName="border" Property="BorderBrush" Value="#1C6399"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- 移动/画笔/橡皮擦特殊样式 -->
+        <Style x:Key="DefaultToolToggleButtonStyle" TargetType="ToggleButton">
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="Foreground" Value="Black"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Width" Value="64"/>
+            <Setter Property="Height" Value="64"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ToggleButton">
+                        <Border x:Name="border" Background="{TemplateBinding Background}" 
+                                BorderBrush="#CCCCCC" BorderThickness="1" CornerRadius="4">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#F0F0F0"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#E0E0E0"/>
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#2980B9"/>
+                                <Setter TargetName="border" Property="BorderBrush" Value="#1C6399"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- 照片按钮特殊样式 -->
+        <Style x:Key="DefaultPhotoButtonStyle" TargetType="Button">
+            <Setter Property="Width" Value="64"/>
+            <Setter Property="Height" Value="64"/>
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="Foreground" Value="Black"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="border" Background="{TemplateBinding Background}" 
+                                BorderBrush="#CCCCCC" BorderThickness="1" CornerRadius="4">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#F0F0F0"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#E0E0E0"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- 更多按钮样式 - 白底黑标 -->
+        <Style x:Key="DefaultMoreButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="Foreground" Value="Black"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Width" Value="64"/>
+            <Setter Property="Height" Value="64"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="border" Background="{TemplateBinding Background}" 
+                                BorderBrush="#CCCCCC" BorderThickness="1" CornerRadius="4">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#F0F0F0"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#E0E0E0"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- 默认图标和文本颜色 -->
+        <SolidColorBrush x:Key="DefaultIconBrush" Color="Black"/>
+        <SolidColorBrush x:Key="DefaultTextBrush" Color="Black"/>
     </Window.Resources>
 
     <Grid>
@@ -141,29 +197,29 @@
 
             <!-- 左侧功能区（更多/最小化/扫一扫） -->
             <StackPanel Grid.Column="0" Orientation="Horizontal" Margin="10,0" VerticalAlignment="Center">
-                <Button x:Name="MoreButton" Style="{StaticResource MoreButtonStyle}" Margin="5,0,-2,0"
-                        Click="MoreButton_Click" Background="#FF2C3E50">
+                <Button x:Name="MoreButton" Style="{StaticResource DefaultMoreButtonStyle}" Margin="5,0,-2,0"
+                        Click="MoreButton_Click">
                     <StackPanel Orientation="Vertical" HorizontalAlignment="Center" VerticalAlignment="Center">
                         <Viewbox Width="30" Height="30">
-                            <Path Fill="White" Data="M4 6a1 1 0 0 1 1-1h14a1 1 0 1 1 0 2H5a1 1 0 0 1-1-1m0 12a1 1 0 0 1 1-1h14a1 1 0 1 1 0 2H5a1 1 0 0 1-1-1m1-7a1 1 0 1 0 0 2h8a1 1 0 1 0 0-2z"/>
+                            <Path Fill="{StaticResource DefaultIconBrush}" Data="M4 6a1 1 0 0 1 1-1h14a1 1 0 1 1 0 2H5a1 1 0 0 1-1-1m0 12a1 1 0 0 1 1-1h14a1 1 0 1 1 0 2H5a1 1 0 0 1-1-1m1-7a1 1 0 1 0 0 2h8a1 1 0 1 0 0-2z"/>
                         </Viewbox>
-                        <TextBlock Text="更多" FontSize="10" HorizontalAlignment="Center" Margin="0,2,0,0"/>
+                        <TextBlock Text="更多" FontSize="10" HorizontalAlignment="Center" Margin="0,2,0,0" Foreground="{StaticResource DefaultTextBrush}"/>
                     </StackPanel>
                 </Button>
-                <Button Click="Minimize_Click" Margin="5,0">
+                <Button Style="{StaticResource DefaultButtonStyle}" Click="Minimize_Click" Margin="5,0">
                     <StackPanel Orientation="Vertical" HorizontalAlignment="Center" VerticalAlignment="Center">
                         <Viewbox Width="29" Height="30">
-                            <Path Fill="White" Data="M18 3.25H6A2.75 2.75 0 0 0 3.25 6v6a.75.75 0 0 0 1.5 0V6A1.25 1.25 0 0 1 6 4.75h12A1.25 1.25 0 0 1 19.25 6v12A1.25 1.25 0 0 1 18 19.25h-6a.75.75 0 0 0 0 1.5h6A2.75 2.75 0 0 0 20.75 18V6A2.75 2.75 0 0 0 18 3.25 M11.21 13.19a.8.8 0 0 0 .29.06h4a.75.75 0 0 0 0-1.5h-2.19l3.22-3.22a.75.75 0 0 0-1.06-1.06l-3.22 3.22V8.5a.75.75 0 0 0-1.5 0v4a.8.8 0 0 0 .06.29a.7.7 0 0 0 .4.4 M8 14.25H5A1.76 1.76 0 0 0 3.25 16v3A1.76 1.76 0 0 0 5 20.75h3A1.76 1.76 0 0 0 9.75 19v-3A1.76 1.76 0 0 0 8 14.25 M8.25 19a.25.25 0 0 1-.25.25H5a.25.25 0 0 1-.25-.25v-3a.25.25 0 0 1 .25-.25h3a.25.25 0 0 1 .25.25Z"/>
+                            <Path Fill="{StaticResource DefaultIconBrush}" Data="M18 3.25H6A2.75 2.75 0 0 0 3.25 6v6a.75.75 0 0 0 1.5 0V6A1.25 1.25 0 0 1 6 4.75h12A1.25 1.25 0 0 1 19.25 6v12A1.25 1.25 0 0 1 18 19.25h-6a.75.75 0 0 0 0 1.5h6A2.75 2.75 0 0 0 20.75 18V6A2.75 2.75 0 0 0 18 3.25 M11.21 13.19a.8.8 0 0 0 .29.06h4a.75.75 0 0 0 0-1.5h-2.19l3.22-3.22a.75.75 0 0 0-1.06-1.06l-3.22 3.22V8.5a.75.75 0 0 0-1.5 0v4a.8.8 0 0 0 .06.29a.7.7 0 0 0 .4.4 M8 14.25H5A1.76 1.76 0 0 0 3.25 16v3A1.76 1.76 0 0 0 5 20.75h3A1.76 1.76 0 0 0 9.75 19v-3A1.76 1.76 0 0 0 8 14.25 M8.25 19a.25.25 0 0 1-.25.25H5a.25.25 0 0 1-.25-.25v-3a.25.25 0 0 1 .25-.25h3a.25.25 0 0 1 .25.25Z"/>
                         </Viewbox>
-                        <TextBlock Text="最小化" FontSize="10" HorizontalAlignment="Center" Margin="0,2,0,0"/>
+                        <TextBlock Text="最小化" FontSize="10" HorizontalAlignment="Center" Margin="0,2,0,0" Foreground="{StaticResource DefaultTextBrush}"/>
                     </StackPanel>
                 </Button>
-                <Button Click="ScanQRCode_Click" Margin="5,0">
+                <Button Style="{StaticResource DefaultButtonStyle}" Click="ScanQRCode_Click" Margin="5,0">
                     <StackPanel Orientation="Vertical" HorizontalAlignment="Center" VerticalAlignment="Center">
                         <Viewbox Width="30" Height="30">
-                            <Path Fill="White" Data="M9 3H3v6h2V5h4zM3 21v-6h2v4h4v2zM15 3v2h4v4h2V3zm4 12h2v6h-6v-2h4zM7 7h4v4H7zm0 6h4v4H7zm10-6h-4v4h4zm-4 6h4v4h-4z"/>
+                            <Path Fill="{StaticResource DefaultIconBrush}" Data="M9 3H3v6h2V5h4zM3 21v-6h2v4h4v2zM15 3v2h4v4h2V3zm4 12h2v6h-6v-2h4zM7 7h4v4H7zm0 6h4v4H7zm10-6h-4v4h4zm-4 6h4v4h-4z"/>
                         </Viewbox>
-                        <TextBlock Text="扫一扫" FontSize="10" HorizontalAlignment="Center" Margin="0,2,0,0"/>
+                        <TextBlock Text="扫一扫" FontSize="10" HorizontalAlignment="Center" Margin="0,2,0,0" Foreground="{StaticResource DefaultTextBrush}"/>
                     </StackPanel>
                 </Button>
             </StackPanel>
@@ -171,84 +227,120 @@
             <!-- 中间主菜单 - 居中显示 -->
             <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
                 <!-- 移动 / 画笔 / 橡皮擦 -->
-                <ToggleButton x:Name="MoveBtn" Click="MoveBtn_Click" IsChecked="True" Margin="5,0,-3,0">
+                <ToggleButton x:Name="MoveBtn" Click="MoveBtn_Click" IsChecked="True" Margin="5,0,-3,0" Style="{StaticResource DefaultToolToggleButtonStyle}">
                     <StackPanel Orientation="Vertical" HorizontalAlignment="Center" VerticalAlignment="Center">
                         <Viewbox Width="30" Height="30">
-                            <Path x:Name="MoveIcon" Fill="White" Data="M302.189 329.126H196.105l55.831 135.993c3.889 9.428-.555 19.999-9.444 23.999l-49.165 21.427c-9.165 4-19.443-.571-23.332-9.714l-53.053-129.136l-86.664 89.138C18.729 472.71 0 463.554 0 447.977V18.299C0 1.899 19.921-6.096 30.277 5.443l284.412 292.542c11.472 11.179 3.007 31.141-12.5 31.141"/>
+                            <Path x:Name="MoveIcon">
+                                <Path.Style>
+                                    <Style TargetType="Path">
+                                        <Setter Property="Fill" Value="{StaticResource DefaultIconBrush}"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsChecked, RelativeSource={RelativeSource AncestorType=ToggleButton}}" Value="True">
+                                                <Setter Property="Fill" Value="White"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Path.Style>
+                                <Path.Data>M302.189 329.126H196.105l55.831 135.993c3.889 9.428-.555 19.999-9.444 23.999l-49.165 21.427c-9.165 4-19.443-.571-23.332-9.714l-53.053-129.136l-86.664 89.138C18.729 472.71 0 463.554 0 447.977V18.299C0 1.899 19.921-6.096 30.277 5.443l284.412 292.542c11.472 11.179 3.007 31.141-12.5 31.141</Path.Data>
+                            </Path>
                         </Viewbox>
-                        <TextBlock Text="移动" FontSize="10" HorizontalAlignment="Center" Margin="0,2,0,0"/>
+                        <TextBlock Text="移动" FontSize="10" HorizontalAlignment="Center" Margin="0,2,0,0" Foreground="{StaticResource DefaultTextBrush}"/>
                     </StackPanel>
                 </ToggleButton>
-                <ToggleButton x:Name="PenBtn" Click="PenBtn_Click" Margin="5,0,-3,0">
+                <ToggleButton x:Name="PenBtn" Click="PenBtn_Click" Margin="5,0,-3,0" Style="{StaticResource DefaultToolToggleButtonStyle}">
                     <StackPanel Orientation="Vertical" HorizontalAlignment="Center" VerticalAlignment="Center">
                         <Viewbox Width="30" Height="30">
-                            <Path x:Name="PenIcon" Fill="White" Data="M4.2 20.975q-.525.125-.913-.262t-.262-.913l.875-4.25l4.55 4.55zm5.875-2.1l-4.95-4.95L15.45 3.6q.575-.575 1.425-.575T18.3 3.6l2.1 2.1q.575.575.575 1.425T20.4 8.55z"/>
+                            <Path x:Name="PenIcon">
+                                <Path.Style>
+                                    <Style TargetType="Path">
+                                        <Setter Property="Fill" Value="{StaticResource DefaultIconBrush}"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsChecked, RelativeSource={RelativeSource AncestorType=ToggleButton}}" Value="True">
+                                                <Setter Property="Fill" Value="White"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Path.Style>
+                                <Path.Data>M4.2 20.975q-.525.125-.913-.262t-.262-.913l.875-4.25l4.55 4.55zm5.875-2.1l-4.95-4.95L15.45 3.6q.575-.575 1.425-.575T18.3 3.6l2.1 2.1q.575.575.575 1.425T20.4 8.55z</Path.Data>
+                            </Path>
                         </Viewbox>
-                        <TextBlock Text="画笔" FontSize="10" HorizontalAlignment="Center" Margin="0,2,0,0"/>
+                        <TextBlock Text="画笔" FontSize="10" HorizontalAlignment="Center" Margin="0,2,0,0" Foreground="{StaticResource DefaultTextBrush}"/>
                     </StackPanel>
                 </ToggleButton>
-                <ToggleButton x:Name="EraserBtn" Click="EraserBtn_Click" Margin="5,0">
+                <ToggleButton x:Name="EraserBtn" Click="EraserBtn_Click" Margin="5,0" Style="{StaticResource DefaultToolToggleButtonStyle}">
                     <StackPanel Orientation="Vertical" HorizontalAlignment="Center" VerticalAlignment="Center">
                         <Viewbox Width="30" Height="30">
-                            <Path x:Name="EraserIcon" Fill="White" Data="M3.121 17.85a3 3 0 0 1 0-4.243l7.071-7.072l8.486 8.486l-3.243 3.242H20a1 1 0 1 1 0 2H6.778a3 3 0 0 1-2.121-.878L3.12 17.849zm16.97-4.243l1.415-1.415a3 3 0 0 0 0-4.242l-4.243-4.243a3 3 0 0 0-4.242 0l-1.414 1.414z"/>
+                            <Path x:Name="EraserIcon">
+                                <Path.Style>
+                                    <Style TargetType="Path">
+                                        <Setter Property="Fill" Value="{StaticResource DefaultIconBrush}"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsChecked, RelativeSource={RelativeSource AncestorType=ToggleButton}}" Value="True">
+                                                <Setter Property="Fill" Value="White"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Path.Style>
+                                <Path.Data>M3.121 17.85a3 3 0 0 1 0-4.243l7.071-7.072l8.486 8.486l-3.243 3.242H20a1 1 0 1 1 0 2H6.778a3 3 0 0 1-2.121-.878L3.12 17.849zm16.97-4.243l1.415-1.415a3 3 0 0 0 0-4.242l-4.243-4.243a3 3 0 0 0-4.242 0l-1.414 1.414z</Path.Data>
+                            </Path>
                         </Viewbox>
-                        <TextBlock Text="橡皮" FontSize="10" HorizontalAlignment="Center" Margin="0,2,0,0"/>
+                        <TextBlock Text="橡皮" FontSize="10" HorizontalAlignment="Center" Margin="0,2,0,0" Foreground="{StaticResource DefaultTextBrush}"/>
                     </StackPanel>
                 </ToggleButton>
 
                 <!-- 撤回 / 清屏 -->
-                <Button Click="UndoInk_Click" Margin="20,0,-3,0">
+                <Button Style="{StaticResource DefaultButtonStyle}" Click="UndoInk_Click" Margin="20,0,-3,0">
                     <StackPanel Orientation="Vertical" HorizontalAlignment="Center" VerticalAlignment="Center">
                         <Viewbox Width="30" Height="30">
-                            <Path Fill="White" Data="M16 3C12 3 8.4 4.8 6 7.7V4H4v8h8v-2H6.8c2-3 5.3-5 9.2-5c6.1 0 11 4.9 11 11s-4.9 11-11 11S5 22.1 5 16H3c0 7.2 5.8 13 13 13s13-5.8 13-13S23.2 3 16 3"/>
+                            <Path Fill="{StaticResource DefaultIconBrush}" Data="M16 3C12 3 8.4 4.8 6 7.7V4H4v8h8v-2H6.8c2-3 5.3-5 9.2-5c6.1 0 11 4.9 11 11s-4.9 11-11 11S5 22.1 5 16H3c0 7.2 5.8 13 13 13s13-5.8 13-13S23.2 3 16 3"/>
                         </Viewbox>
-                        <TextBlock Text="撤销" FontSize="10" HorizontalAlignment="Center" Margin="0,2,0,0"/>
+                        <TextBlock Text="撤销" FontSize="10" HorizontalAlignment="Center" Margin="0,2,0,0" Foreground="{StaticResource DefaultTextBrush}"/>
                     </StackPanel>
                 </Button>
-                <Button Click="RedoInk_Click" Margin="5,0,-3,0">
+                <Button Style="{StaticResource DefaultButtonStyle}" Click="RedoInk_Click" Margin="5,0,-3,0">
                     <StackPanel Orientation="Vertical" HorizontalAlignment="Center" VerticalAlignment="Center">
                         <Viewbox Width="30" Height="30">
-                            <Path Fill="White" Data="M16 3C8.832 3 3 8.832 3 16s5.832 13 13 13s13-5.832 13-13h-2c0 6.086-4.914 11-11 11S5 22.086 5 16S9.914 5 16 5c3.875 0 7.262 1.984 9.219 5H20v2h8V4h-2v3.719C23.617 4.844 20.02 3 16 3"/>
+                            <Path Fill="{StaticResource DefaultIconBrush}" Data="M16 3C8.832 3 3 8.832 3 16s5.832 13 13 13s13-5.832 13-13h-2c0 6.086-4.914 11-11 11S5 22.086 5 16S9.914 5 16 5c3.875 0 7.262 1.984 9.219 5H20v2h8V4h-2v3.719C23.617 4.844 20.02 3 16 3"/>
                         </Viewbox>
-                        <TextBlock Text="重做" FontSize="10" HorizontalAlignment="Center" Margin="0,2,0,0"/>
+                        <TextBlock Text="重做" FontSize="10" HorizontalAlignment="Center" Margin="0,2,0,0" Foreground="{StaticResource DefaultTextBrush}"/>
                     </StackPanel>
                 </Button>
-                <Button Click="ClearInk_Click" Margin="5,0">
+                <Button Style="{StaticResource DefaultButtonStyle}" Click="ClearInk_Click" Margin="5,0">
                     <StackPanel Orientation="Vertical" HorizontalAlignment="Center" VerticalAlignment="Center">
                         <Viewbox Width="30" Height="30">
-                            <Path Fill="White" Data="M16.5 4.478v.227a49 49 0 0 1 3.878.512a.75.75 0 1 1-.256 1.478l-.209-.035l-1.005 13.07a3 3 0 0 1-2.991 2.77H8.084a3 3 0 0 1-2.991-2.77L4.087 6.66l-.209.035a.75.75 0 0 1-.256-1.478A49 49 0 0 1 7.5 4.705v-.227c0-1.564 1.213-2.9 2.816-2.951a53 53 0 0 1 3.369 0c1.603.051 2.815 1.387 2.815 2.951m-6.136-1.452a51 51 0 0 1 3.273 0C14.39 3.05 15 3.684 15 4.478v.113a50 50 0 0 0-6 0v-.113c0-.794.609-1.428 1.364-1.452m-.355 5.945a.75.75 0 1 0-1.5.058l.347 9a.75.75 0 1 0 1.499-.058zm5.48.058a.75.75 0 1 0-1.498-.058l-.347 9a.75.75 0 0 0 1.5.058z"/>
+                            <Path Fill="{StaticResource DefaultIconBrush}" Data="M16.5 4.478v.227a49 49 0 0 1 3.878.512a.75.75 0 1 1-.256 1.478l-.209-.035l-1.005 13.07a3 3 0 0 1-2.991 2.77H8.084a3 3 0 0 1-2.991-2.77L4.087 6.66l-.209.035a.75.75 0 0 1-.256-1.478A49 49 0 0 1 7.5 4.705v-.227c0-1.564 1.213-2.9 2.816-2.951a53 53 0 0 1 3.369 0c1.603.051 2.815 1.387 2.815 2.951m-6.136-1.452a51 51 0 0 1 3.273 0C14.39 3.05 15 3.684 15 4.478v.113a50 50 0 0 0-6 0v-.113c0-.794.609-1.428 1.364-1.452m-.355 5.945a.75.75 0 1 0-1.5.058l.347 9a.75.75 0 1 0 1.499-.058zm5.48.058a.75.75 0 1 0-1.498-.058l-.347 9a.75.75 0 0 0 1.5.058z"/>
                         </Viewbox>
-                        <TextBlock Text="清屏" FontSize="10" HorizontalAlignment="Center" Margin="0,2,0,0"/>
+                        <TextBlock Text="清屏" FontSize="10" HorizontalAlignment="Center" Margin="0,2,0,0" Foreground="{StaticResource DefaultTextBrush}"/>
                     </StackPanel>
                 </Button>
 
                 <!-- 拍照 / 扫描 -->
-                <Button Click="Capture_Click" Margin="5,0,-3,0">
+                <Button Style="{StaticResource DefaultButtonStyle}" Click="Capture_Click" Margin="5,0,-3,0">
                     <StackPanel Orientation="Vertical" HorizontalAlignment="Center" VerticalAlignment="Center">
                         <Viewbox Width="30" Height="30">
-                            <Path Fill="White" Data="M19 6.5h-1.28l-.32-1a3 3 0 0 0-2.84-2H9.44A3 3 0 0 0 6.6 5.55l-.32 1H5a3 3 0 0 0-3 3v8a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3v-8a3 3 0 0 0-3-3.05m1 11a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-8a1 1 0 0 1 1-1h2a1 1 0 0 0 1-.68l.54-1.64a1 1 0 0 1 .95-.68h5.12a1 1 0 0 1 .95.68l.54 1.64a1 1 0 0 0 .9.68h2a1 1 0 0 1 1 1Zm-8-9a4 4 0 1 0 4 4a4 4 0 0 0-4-4m0 6a2 2 0 1 1 2-2a2 2 0 0 1-2 2"/>
+                            <Path Fill="{StaticResource DefaultIconBrush}" Data="M19 6.5h-1.28l-.32-1a3 3 0 0 0-2.84-2H9.44A3 3 0 0 0 6.6 5.55l-.32 1H5a3 3 0 0 0-3 3v8a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3v-8a3 3 0 0 0-3-3.05m1 11a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-8a1 1 0 0 1 1-1h2a1 1 0 0 0 1-.68l.54-1.64a1 1 0 0 1 .95-.68h5.12a1 1 0 0 1 .95.68l.54 1.64a1 1 0 0 0 .9.68h2a1 1 0 0 1 1 1Zm-8-9a4 4 0 1 0 4 4a4 4 0 0 0-4-4m0 6a2 2 0 1 1 2-2a2 2 0 0 1-2 2"/>
                         </Viewbox>
-                        <TextBlock Text="拍照" FontSize="10" HorizontalAlignment="Center" Margin="0,2,0,0"/>
+                        <TextBlock Text="拍照" FontSize="10" HorizontalAlignment="Center" Margin="0,2,0,0" Foreground="{StaticResource DefaultTextBrush}"/>
                     </StackPanel>
                 </Button>
-                <Button Click="ScanDocument_Click" Margin="5,0">
+                <Button Style="{StaticResource DefaultButtonStyle}" Click="ScanDocument_Click" Margin="5,0">
                     <StackPanel Orientation="Vertical" HorizontalAlignment="Center" VerticalAlignment="Center">
                         <Viewbox Width="30" Height="30">
-                            <Path Fill="White" Data="M13 9h5l-5-5zM4 22v-5h16v5zm-3-7v-2h22v2zm3-4V2h10l6 6v3z"/>
+                            <Path Fill="{StaticResource DefaultIconBrush}" Data="M13 9h5l-5-5zM4 22v-5h16v5zm-3-7v-2h22v2zm3-4V2h10l6 6v3z"/>
                         </Viewbox>
-                        <TextBlock Text="扫描" FontSize="10" HorizontalAlignment="Center" Margin="0,2,0,0"/>
+                        <TextBlock Text="扫描" FontSize="10" HorizontalAlignment="Center" Margin="0,2,0,0" Foreground="{StaticResource DefaultTextBrush}"/>
                     </StackPanel>
                 </Button>
             </StackPanel>
 
             <!-- 右侧照片功能 -->
             <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="0,0,10,0" VerticalAlignment="Center">
-                <Button x:Name="PhotoBtn" Click="TogglePhotoPanel_Click" Style="{StaticResource PhotoButtonStyle}" Width="214" Background="#FF2C3E50">
+                <Button x:Name="PhotoBtn" Style="{StaticResource DefaultPhotoButtonStyle}" Width="214" Click="TogglePhotoPanel_Click">
                     <StackPanel Orientation="Vertical" HorizontalAlignment="Center" VerticalAlignment="Center">
                         <Viewbox Width="30" Height="30">
-                            <Path Fill="White" Data="M19 4H5a3 3 0 0 0-3 3v10a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3V7a3 3 0 0 0-3-3M5 18a1 1 0 0 1-1-1v-2.42l3.3-3.29a1 1 0 0 1 1.4 0L15.41 18Zm15-1a1 1 0 0 1-1 1h-.77l-3.81-3.83l.88-.88a1 1 0 0 1 1.4 0l3.3 3.29Zm0-3.24l-1.88-1.87a3.06 3.06 0 0 0-4.24 0l-.88.88l-2.88-2.88a3.06 3.06 0 0 0-4.24 0L4 11.76V7a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1Z"/>
+                            <Path Fill="{StaticResource DefaultIconBrush}" Data="M19 4H5a3 3 0 0 0-3 3v10a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3V7a3 3 0 0 0-3-3M5 18a1 1 0 0 1-1-1v-2.42l3.3-3.29a1 1 0 0 1 1.4 0L15.41 18Zm15-1a1 1 0 0 1-1 1h-.77l-3.81-3.83l.88-.88a1 1 0 0 1 1.4 0l3.3 3.29Zm0-3.24l-1.88-1.87a3.06 3.06 0 0 0-4.24 0l-.88.88l-2.88-2.88a3.06 3.06 0 0 0-4.24 0L4 11.76V7a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1Z"/>
                         </Viewbox>
-                        <TextBlock Text="照片" FontSize="10" HorizontalAlignment="Center" Margin="0,2,0,0" Foreground="White"/>
+                        <TextBlock Text="照片" FontSize="10" HorizontalAlignment="Center" Margin="0,2,0,0" Foreground="{StaticResource DefaultTextBrush}"/>
                     </StackPanel>
                 </Button>
                 <Popup x:Name="PhotoTipPopup" PlacementTarget="{Binding ElementName=PhotoBtn}" Placement="Top" AllowsTransparency="True" StaysOpen="False">
@@ -278,12 +370,12 @@
                         </ListBox.ItemTemplate>
                     </ListBox>
                     <StackPanel DockPanel.Dock="Bottom" Orientation="Vertical" HorizontalAlignment="Center" Margin="10">
-                        <Button Click="BackToLive_Click" Width="100" Height="40">
+                        <Button Style="{StaticResource DefaultButtonStyle}" Click="BackToLive_Click" Width="100" Height="40">
                             <StackPanel Orientation="Vertical" HorizontalAlignment="Center" VerticalAlignment="Center">
                                 <TextBlock Text="返回实时" FontSize="10" HorizontalAlignment="Center"/>
                             </StackPanel>
                         </Button>
-                        <Button Click="SaveImage_Click" Width="100" Height="40">
+                        <Button Style="{StaticResource DefaultButtonStyle}" Click="SaveImage_Click" Width="100" Height="40">
                             <StackPanel Orientation="Vertical" HorizontalAlignment="Center" VerticalAlignment="Center">
                                 <TextBlock Text="保存图片" FontSize="10" HorizontalAlignment="Center" Margin="0,2,0,0"/>
                             </StackPanel>
@@ -536,15 +628,15 @@
                             HorizontalAlignment="Center" 
                             VerticalAlignment="Bottom"
                             Margin="0,0,0,20">
-                    <Button x:Name="ApplyCorrectionButton" 
+                    <Button Style="{StaticResource DefaultButtonStyle}" x:Name="ApplyCorrectionButton" 
                             Content="完成" 
                             Click="ApplyCorrectionButton_Click"
                             Margin="5" Width="80" Height="40"/>
-                    <Button x:Name="ResetCorrectionButton" 
+                    <Button Style="{StaticResource DefaultButtonStyle}" x:Name="ResetCorrectionButton" 
                             Content="重置" 
                             Click="ResetCorrectionButton_Click"
                             Margin="5" Width="80" Height="40"/>
-                    <Button x:Name="CancelCorrectionButton" 
+                    <Button Style="{StaticResource DefaultButtonStyle}" x:Name="CancelCorrectionButton" 
                             Content="取消" 
                             Click="CancelCorrectionButton_Click"
                             Margin="5" Width="80" Height="40"/>

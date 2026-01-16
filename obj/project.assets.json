@@ -1,0 +1,579 @@
+{
+  "version": 3,
+  "targets": {
+    "net5.0-windows7.0": {
+      "AForge/2.2.5": {
+        "type": "package",
+        "compile": {
+          "lib/AForge.dll": {}
+        },
+        "runtime": {
+          "lib/AForge.dll": {}
+        }
+      },
+      "AForge.Imaging/2.2.5": {
+        "type": "package",
+        "dependencies": {
+          "AForge": "2.2.5",
+          "AForge.Math": "2.2.5"
+        },
+        "compile": {
+          "lib/AForge.Imaging.dll": {}
+        },
+        "runtime": {
+          "lib/AForge.Imaging.dll": {}
+        }
+      },
+      "AForge.Math/2.2.5": {
+        "type": "package",
+        "dependencies": {
+          "AForge": "2.2.5"
+        },
+        "compile": {
+          "lib/AForge.Math.dll": {}
+        },
+        "runtime": {
+          "lib/AForge.Math.dll": {}
+        }
+      },
+      "AForge.Video/2.2.5": {
+        "type": "package",
+        "dependencies": {
+          "AForge": "2.2.5"
+        },
+        "compile": {
+          "lib/AForge.Video.dll": {}
+        },
+        "runtime": {
+          "lib/AForge.Video.dll": {}
+        }
+      },
+      "AForge.Video.DirectShow/2.2.5": {
+        "type": "package",
+        "dependencies": {
+          "AForge.Video": "2.2.5"
+        },
+        "compile": {
+          "lib/AForge.Video.DirectShow.dll": {}
+        },
+        "runtime": {
+          "lib/AForge.Video.DirectShow.dll": {}
+        }
+      },
+      "Magick.NET-Q8-AnyCPU/14.8.0": {
+        "type": "package",
+        "dependencies": {
+          "Magick.NET.Core": "14.8.0"
+        },
+        "compile": {
+          "lib/netstandard20/Magick.NET-Q8-AnyCPU.dll": {}
+        },
+        "runtime": {
+          "lib/netstandard20/Magick.NET-Q8-AnyCPU.dll": {}
+        },
+        "build": {
+          "buildTransitive/netstandard20/Magick.NET-Q8-AnyCPU.targets": {}
+        },
+        "runtimeTargets": {
+          "runtimes/linux-arm64/native/Magick.Native-Q8-arm64.dll.so": {
+            "assetType": "native",
+            "rid": "linux-arm64"
+          },
+          "runtimes/linux-musl-x64/native/Magick.Native-Q8-x64.dll.so": {
+            "assetType": "native",
+            "rid": "linux-musl-x64"
+          },
+          "runtimes/linux-x64/native/Magick.Native-Q8-x64.dll.so": {
+            "assetType": "native",
+            "rid": "linux-x64"
+          },
+          "runtimes/osx-arm64/native/Magick.Native-Q8-arm64.dll.dylib": {
+            "assetType": "native",
+            "rid": "osx-arm64"
+          },
+          "runtimes/osx-x64/native/Magick.Native-Q8-x64.dll.dylib": {
+            "assetType": "native",
+            "rid": "osx-x64"
+          },
+          "runtimes/win-arm64/native/Magick.Native-Q8-arm64.dll": {
+            "assetType": "native",
+            "rid": "win-arm64"
+          },
+          "runtimes/win-x64/native/Magick.Native-Q8-x64.dll": {
+            "assetType": "native",
+            "rid": "win-x64"
+          },
+          "runtimes/win-x86/native/Magick.Native-Q8-x86.dll": {
+            "assetType": "native",
+            "rid": "win-x86"
+          }
+        }
+      },
+      "Magick.NET.Core/14.8.0": {
+        "type": "package",
+        "compile": {
+          "lib/netstandard20/Magick.NET.Core.dll": {}
+        },
+        "runtime": {
+          "lib/netstandard20/Magick.NET.Core.dll": {}
+        }
+      },
+      "Newtonsoft.Json/13.0.3": {
+        "type": "package",
+        "compile": {
+          "lib/netstandard2.0/Newtonsoft.Json.dll": {}
+        },
+        "runtime": {
+          "lib/netstandard2.0/Newtonsoft.Json.dll": {}
+        }
+      },
+      "WPF-UI/4.1.0": {
+        "type": "package",
+        "compile": {
+          "lib/net462/Wpf.Ui.dll": {}
+        },
+        "runtime": {
+          "lib/net462/Wpf.Ui.dll": {}
+        }
+      },
+      "ZXing.Net/0.16.10": {
+        "type": "package",
+        "compile": {
+          "lib/net5.0/zxing.dll": {}
+        },
+        "runtime": {
+          "lib/net5.0/zxing.dll": {}
+        }
+      }
+    }
+  },
+  "libraries": {
+    "AForge/2.2.5": {
+      "sha512": "clkumhM9DggqIzEXAHgVLeWO4arG5YfoPr7J4jfjJx35AoeEIJSSm49J25bwp/9mXQYLwi7y1Wunc8qgYJsGxg==",
+      "type": "package",
+      "path": "aforge/2.2.5",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "aforge.2.2.5.nupkg.sha512",
+        "aforge.nuspec",
+        "lib/AForge.dll",
+        "lib/AForge.xml"
+      ]
+    },
+    "AForge.Imaging/2.2.5": {
+      "sha512": "n8l7Zdsm89EFW9Uz4uCO3D428Gu4Q56YxixSMJPruen1c30R8R9Mm8AreTdoOi2XjN5id04JwFFlXYTk8pIIfw==",
+      "type": "package",
+      "path": "aforge.imaging/2.2.5",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "aforge.imaging.2.2.5.nupkg.sha512",
+        "aforge.imaging.nuspec",
+        "lib/AForge.Imaging.dll",
+        "lib/AForge.Imaging.xml"
+      ]
+    },
+    "AForge.Math/2.2.5": {
+      "sha512": "pmT1WobVv13vMxwXhCu8sRunxjiUHyURWS0+dsW/aBPi06xiyYIdCLHI6jph9Axb4QoLIlb85eBI6zd2EAbGIg==",
+      "type": "package",
+      "path": "aforge.math/2.2.5",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "aforge.math.2.2.5.nupkg.sha512",
+        "aforge.math.nuspec",
+        "lib/AForge.Math.dll",
+        "lib/AForge.Math.xml"
+      ]
+    },
+    "AForge.Video/2.2.5": {
+      "sha512": "XqzcOXtBUagEPRqg/00oayxlCPmxP4284SdM62mVotsNoD03fs19BrzdMBfhUOOYPyd0B/IXH7tEWnSDmc2gxA==",
+      "type": "package",
+      "path": "aforge.video/2.2.5",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "aforge.video.2.2.5.nupkg.sha512",
+        "aforge.video.nuspec",
+        "lib/AForge.Video.dll",
+        "lib/AForge.Video.xml"
+      ]
+    },
+    "AForge.Video.DirectShow/2.2.5": {
+      "sha512": "pEch6felU/RGAbl0A7yjaQjsGxwiRFU9R+qBqR92wQo++XhzPLeQaZHnAPIBYaG7MfoqtjgCDkK4z3Tra4VQ3w==",
+      "type": "package",
+      "path": "aforge.video.directshow/2.2.5",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "aforge.video.directshow.2.2.5.nupkg.sha512",
+        "aforge.video.directshow.nuspec",
+        "lib/AForge.Video.DirectShow.dll",
+        "lib/AForge.Video.DirectShow.xml"
+      ]
+    },
+    "Magick.NET-Q8-AnyCPU/14.8.0": {
+      "sha512": "pKS7o1OH2lj40h82ryl0pdxGjnnpE+G0fqI8/NKD+s4851v7XY5B0hBvHFbmjj4qBjZGHU2TgeMpJyvz/Nb5bg==",
+      "type": "package",
+      "path": "magick.net-q8-anycpu/14.8.0",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "Magick.NET.icon.png",
+        "Notice.txt",
+        "build/netstandard20/Magick.NET-Q8-AnyCPU.targets",
+        "buildTransitive/netstandard20/Magick.NET-Q8-AnyCPU.targets",
+        "docs/Readme.md",
+        "lib/net8.0/Magick.NET-Q8-AnyCPU.dll",
+        "lib/net8.0/Magick.NET-Q8-AnyCPU.xml",
+        "lib/netstandard20/Magick.NET-Q8-AnyCPU.dll",
+        "lib/netstandard20/Magick.NET-Q8-AnyCPU.xml",
+        "magick.net-q8-anycpu.14.8.0.nupkg.sha512",
+        "magick.net-q8-anycpu.nuspec",
+        "runtimes/linux-arm64/native/Magick.Native-Q8-arm64.dll.so",
+        "runtimes/linux-musl-x64/native/Magick.Native-Q8-x64.dll.so",
+        "runtimes/linux-x64/native/Magick.Native-Q8-x64.dll.so",
+        "runtimes/osx-arm64/native/Magick.Native-Q8-arm64.dll.dylib",
+        "runtimes/osx-x64/native/Magick.Native-Q8-x64.dll.dylib",
+        "runtimes/win-arm64/native/Magick.Native-Q8-arm64.dll",
+        "runtimes/win-x64/native/Magick.Native-Q8-x64.dll",
+        "runtimes/win-x86/native/Magick.Native-Q8-x86.dll"
+      ]
+    },
+    "Magick.NET.Core/14.8.0": {
+      "sha512": "H5mrY7/vF9bz+rzCXiJvWnE4IrFQXNxaMWikfrwejFIqtsyDBigaR3U4x6KOZjbO8lo2/dXTuqoYfKgwC+QpJg==",
+      "type": "package",
+      "path": "magick.net.core/14.8.0",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "Copyright.txt",
+        "Magick.NET.icon.png",
+        "docs/Readme.md",
+        "lib/net8.0/Magick.NET.Core.dll",
+        "lib/net8.0/Magick.NET.Core.xml",
+        "lib/netstandard20/Magick.NET.Core.dll",
+        "lib/netstandard20/Magick.NET.Core.xml",
+        "magick.net.core.14.8.0.nupkg.sha512",
+        "magick.net.core.nuspec"
+      ]
+    },
+    "Newtonsoft.Json/13.0.3": {
+      "sha512": "HrC5BXdl00IP9zeV+0Z848QWPAoCr9P3bDEZguI+gkLcBKAOxix/tLEAAHC+UvDNPv4a2d18lOReHMOagPa+zQ==",
+      "type": "package",
+      "path": "newtonsoft.json/13.0.3",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "LICENSE.md",
+        "README.md",
+        "lib/net20/Newtonsoft.Json.dll",
+        "lib/net20/Newtonsoft.Json.xml",
+        "lib/net35/Newtonsoft.Json.dll",
+        "lib/net35/Newtonsoft.Json.xml",
+        "lib/net40/Newtonsoft.Json.dll",
+        "lib/net40/Newtonsoft.Json.xml",
+        "lib/net45/Newtonsoft.Json.dll",
+        "lib/net45/Newtonsoft.Json.xml",
+        "lib/net6.0/Newtonsoft.Json.dll",
+        "lib/net6.0/Newtonsoft.Json.xml",
+        "lib/netstandard1.0/Newtonsoft.Json.dll",
+        "lib/netstandard1.0/Newtonsoft.Json.xml",
+        "lib/netstandard1.3/Newtonsoft.Json.dll",
+        "lib/netstandard1.3/Newtonsoft.Json.xml",
+        "lib/netstandard2.0/Newtonsoft.Json.dll",
+        "lib/netstandard2.0/Newtonsoft.Json.xml",
+        "newtonsoft.json.13.0.3.nupkg.sha512",
+        "newtonsoft.json.nuspec",
+        "packageIcon.png"
+      ]
+    },
+    "WPF-UI/4.1.0": {
+      "sha512": "bL+ehJIgRl9bh8imYFJ33DsJrqcU6xfmbEBPlghW/jaBYtbCEDLfuxsEAVITYQjAxTJjPy+DT5vll3XOSCmHgQ==",
+      "type": "package",
+      "path": "wpf-ui/4.1.0",
+      "hasTools": true,
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "Icon.png",
+        "LICENSE.md",
+        "README.md",
+        "ThirdPartyNotices.txt",
+        "lib/net10.0-windows7.0/Wpf.Ui.dll",
+        "lib/net10.0-windows7.0/Wpf.Ui.pdb",
+        "lib/net10.0-windows7.0/Wpf.Ui.xml",
+        "lib/net462/Wpf.Ui.dll",
+        "lib/net462/Wpf.Ui.pdb",
+        "lib/net462/Wpf.Ui.xml",
+        "lib/net472/Wpf.Ui.dll",
+        "lib/net472/Wpf.Ui.pdb",
+        "lib/net472/Wpf.Ui.xml",
+        "lib/net481/Wpf.Ui.dll",
+        "lib/net481/Wpf.Ui.pdb",
+        "lib/net481/Wpf.Ui.xml",
+        "lib/net8.0-windows7.0/Wpf.Ui.dll",
+        "lib/net8.0-windows7.0/Wpf.Ui.pdb",
+        "lib/net8.0-windows7.0/Wpf.Ui.xml",
+        "lib/net9.0-windows7.0/Wpf.Ui.dll",
+        "lib/net9.0-windows7.0/Wpf.Ui.pdb",
+        "lib/net9.0-windows7.0/Wpf.Ui.xml",
+        "tools/VisualStudioToolsManifest.xml",
+        "wpf-ui.4.1.0.nupkg.sha512",
+        "wpf-ui.nuspec"
+      ]
+    },
+    "ZXing.Net/0.16.10": {
+      "sha512": "9avtcn21T7Ndcl8PQ1LHR7/wEoCruX1QKKHvO6zBPTsDW9IdvR5vKOmd618AY+DtDWZz8NaFDTkpbZdgaF4l4w==",
+      "type": "package",
+      "path": "zxing.net/0.16.10",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "lib/native/zxing.XML",
+        "lib/native/zxing.pri",
+        "lib/native/zxing.winmd",
+        "lib/net20-cf/zxing.ce2.0.dll",
+        "lib/net20-cf/zxing.ce2.0.xml",
+        "lib/net20/zxing.XML",
+        "lib/net20/zxing.dll",
+        "lib/net35-cf/zxing.ce3.5.dll",
+        "lib/net35-cf/zxing.ce3.5.xml",
+        "lib/net35/zxing.XML",
+        "lib/net35/zxing.dll",
+        "lib/net40/zxing.XML",
+        "lib/net40/zxing.dll",
+        "lib/net40/zxing.presentation.XML",
+        "lib/net40/zxing.presentation.dll",
+        "lib/net45/zxing.XML",
+        "lib/net45/zxing.dll",
+        "lib/net45/zxing.presentation.XML",
+        "lib/net45/zxing.presentation.dll",
+        "lib/net461/zxing.XML",
+        "lib/net461/zxing.dll",
+        "lib/net461/zxing.presentation.XML",
+        "lib/net461/zxing.presentation.dll",
+        "lib/net47/zxing.XML",
+        "lib/net47/zxing.dll",
+        "lib/net47/zxing.presentation.XML",
+        "lib/net47/zxing.presentation.dll",
+        "lib/net48/zxing.XML",
+        "lib/net48/zxing.dll",
+        "lib/net48/zxing.presentation.XML",
+        "lib/net48/zxing.presentation.dll",
+        "lib/net5.0/zxing.XML",
+        "lib/net5.0/zxing.dll",
+        "lib/net6.0/zxing.XML",
+        "lib/net6.0/zxing.dll",
+        "lib/net7.0/zxing.XML",
+        "lib/net7.0/zxing.dll",
+        "lib/net8.0/zxing.XML",
+        "lib/net8.0/zxing.dll",
+        "lib/net9.0/zxing.XML",
+        "lib/net9.0/zxing.dll",
+        "lib/netcoreapp3.0/zxing.dll",
+        "lib/netcoreapp3.0/zxing.xml",
+        "lib/netcoreapp3.1/zxing.dll",
+        "lib/netcoreapp3.1/zxing.xml",
+        "lib/netstandard1.0/zxing.dll",
+        "lib/netstandard1.0/zxing.xml",
+        "lib/netstandard1.1/zxing.dll",
+        "lib/netstandard1.1/zxing.xml",
+        "lib/netstandard1.3/zxing.dll",
+        "lib/netstandard1.3/zxing.xml",
+        "lib/netstandard2.0/zxing.dll",
+        "lib/netstandard2.0/zxing.xml",
+        "lib/netstandard2.1/zxing.dll",
+        "lib/netstandard2.1/zxing.xml",
+        "lib/portable-win+net40+sl4+sl5+wp7+wp71+wp8/zxing.portable.XML",
+        "lib/portable-win+net40+sl4+sl5+wp7+wp71+wp8/zxing.portable.dll",
+        "lib/sl3-wp/zxing.wp7.0.XML",
+        "lib/sl3-wp/zxing.wp7.0.dll",
+        "lib/sl4-wp71/zxing.wp7.1.XML",
+        "lib/sl4-wp71/zxing.wp7.1.dll",
+        "lib/sl4/zxing.sl4.XML",
+        "lib/sl4/zxing.sl4.dll",
+        "lib/sl5/zxing.sl5.XML",
+        "lib/sl5/zxing.sl5.dll",
+        "lib/uap10/zxing.dll",
+        "lib/uap10/zxing.pri",
+        "lib/uap10/zxing.xml",
+        "lib/windows8-managed/zxing.winrt.XML",
+        "lib/windows8-managed/zxing.winrt.dll",
+        "lib/windows8/zxing.XML",
+        "lib/windows8/zxing.pri",
+        "lib/windows8/zxing.winmd",
+        "lib/wp8/zxing.wp8.0.XML",
+        "lib/wp8/zxing.wp8.0.dll",
+        "logo.jpg",
+        "zxing.net.0.16.10.nupkg.sha512",
+        "zxing.net.nuspec"
+      ]
+    }
+  },
+  "projectFileDependencyGroups": {
+    "net5.0-windows7.0": [
+      "AForge.Imaging >= 2.2.5",
+      "AForge.Video >= 2.2.5",
+      "AForge.Video.DirectShow >= 2.2.5",
+      "Magick.NET-Q8-AnyCPU >= 14.8.0",
+      "Newtonsoft.Json >= 13.0.3",
+      "WPF-UI >= 4.1.0",
+      "ZXing.Net >= 0.16.10"
+    ]
+  },
+  "packageFolders": {
+    "C:\\Users\\Administrator\\.nuget\\packages\\": {}
+  },
+  "project": {
+    "version": "2.1.5",
+    "restore": {
+      "projectUniqueName": "C:\\Users\\Administrator\\source\\repos\\wwcrdrvf6u\\ShowWrite\\ShowWrite.csproj",
+      "projectName": "ShowWrite",
+      "projectPath": "C:\\Users\\Administrator\\source\\repos\\wwcrdrvf6u\\ShowWrite\\ShowWrite.csproj",
+      "packagesPath": "C:\\Users\\Administrator\\.nuget\\packages\\",
+      "outputPath": "C:\\Users\\Administrator\\source\\repos\\wwcrdrvf6u\\ShowWrite\\obj\\",
+      "projectStyle": "PackageReference",
+      "configFilePaths": [
+        "C:\\Users\\Administrator\\AppData\\Roaming\\NuGet\\NuGet.Config",
+        "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
+      ],
+      "originalTargetFrameworks": [
+        "net5.0-windows7.0"
+      ],
+      "sources": {
+        "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
+        "D:\\下载": {},
+        "https://api.nuget.org/v3/index.json": {}
+      },
+      "frameworks": {
+        "net5.0-windows7.0": {
+          "targetAlias": "net5.0-windows",
+          "projectReferences": {}
+        }
+      },
+      "warningProperties": {
+        "warnAsError": [
+          "NU1605"
+        ]
+      }
+    },
+    "frameworks": {
+      "net5.0-windows7.0": {
+        "targetAlias": "net5.0-windows",
+        "dependencies": {
+          "AForge.Imaging": {
+            "target": "Package",
+            "version": "[2.2.5, )"
+          },
+          "AForge.Video": {
+            "target": "Package",
+            "version": "[2.2.5, )"
+          },
+          "AForge.Video.DirectShow": {
+            "target": "Package",
+            "version": "[2.2.5, )"
+          },
+          "Magick.NET-Q8-AnyCPU": {
+            "target": "Package",
+            "version": "[14.8.0, )"
+          },
+          "Newtonsoft.Json": {
+            "target": "Package",
+            "version": "[13.0.3, )"
+          },
+          "WPF-UI": {
+            "target": "Package",
+            "version": "[4.1.0, )"
+          },
+          "ZXing.Net": {
+            "target": "Package",
+            "version": "[0.16.10, )"
+          }
+        },
+        "imports": [
+          "net461",
+          "net462",
+          "net47",
+          "net471",
+          "net472",
+          "net48"
+        ],
+        "assetTargetFallback": true,
+        "warn": true,
+        "frameworkReferences": {
+          "Microsoft.NETCore.App": {
+            "privateAssets": "all"
+          },
+          "Microsoft.WindowsDesktop.App": {
+            "privateAssets": "none"
+          }
+        },
+        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\5.0.408\\RuntimeIdentifierGraph.json"
+      }
+    }
+  },
+  "logs": [
+    {
+      "code": "NU1701",
+      "level": "Warning",
+      "warningLevel": 1,
+      "message": "已使用“.NETFramework,Version=v4.6.1, .NETFramework,Version=v4.6.2, .NETFramework,Version=v4.7, .NETFramework,Version=v4.7.1, .NETFramework,Version=v4.7.2, .NETFramework,Version=v4.8”而不是项目目标框架“net5.0-windows7.0”还原包“AForge 2.2.5”。此包可能与项目不完全兼容。",
+      "libraryId": "AForge",
+      "targetGraphs": [
+        "net5.0-windows7.0"
+      ]
+    },
+    {
+      "code": "NU1701",
+      "level": "Warning",
+      "warningLevel": 1,
+      "message": "已使用“.NETFramework,Version=v4.6.1, .NETFramework,Version=v4.6.2, .NETFramework,Version=v4.7, .NETFramework,Version=v4.7.1, .NETFramework,Version=v4.7.2, .NETFramework,Version=v4.8”而不是项目目标框架“net5.0-windows7.0”还原包“AForge.Imaging 2.2.5”。此包可能与项目不完全兼容。",
+      "libraryId": "AForge.Imaging",
+      "targetGraphs": [
+        "net5.0-windows7.0"
+      ]
+    },
+    {
+      "code": "NU1701",
+      "level": "Warning",
+      "warningLevel": 1,
+      "message": "已使用“.NETFramework,Version=v4.6.1, .NETFramework,Version=v4.6.2, .NETFramework,Version=v4.7, .NETFramework,Version=v4.7.1, .NETFramework,Version=v4.7.2, .NETFramework,Version=v4.8”而不是项目目标框架“net5.0-windows7.0”还原包“AForge.Math 2.2.5”。此包可能与项目不完全兼容。",
+      "libraryId": "AForge.Math",
+      "targetGraphs": [
+        "net5.0-windows7.0"
+      ]
+    },
+    {
+      "code": "NU1701",
+      "level": "Warning",
+      "warningLevel": 1,
+      "message": "已使用“.NETFramework,Version=v4.6.1, .NETFramework,Version=v4.6.2, .NETFramework,Version=v4.7, .NETFramework,Version=v4.7.1, .NETFramework,Version=v4.7.2, .NETFramework,Version=v4.8”而不是项目目标框架“net5.0-windows7.0”还原包“AForge.Video 2.2.5”。此包可能与项目不完全兼容。",
+      "libraryId": "AForge.Video",
+      "targetGraphs": [
+        "net5.0-windows7.0"
+      ]
+    },
+    {
+      "code": "NU1701",
+      "level": "Warning",
+      "warningLevel": 1,
+      "message": "已使用“.NETFramework,Version=v4.6.1, .NETFramework,Version=v4.6.2, .NETFramework,Version=v4.7, .NETFramework,Version=v4.7.1, .NETFramework,Version=v4.7.2, .NETFramework,Version=v4.8”而不是项目目标框架“net5.0-windows7.0”还原包“AForge.Video.DirectShow 2.2.5”。此包可能与项目不完全兼容。",
+      "libraryId": "AForge.Video.DirectShow",
+      "targetGraphs": [
+        "net5.0-windows7.0"
+      ]
+    },
+    {
+      "code": "NU1701",
+      "level": "Warning",
+      "warningLevel": 1,
+      "message": "已使用“.NETFramework,Version=v4.6.1, .NETFramework,Version=v4.6.2, .NETFramework,Version=v4.7, .NETFramework,Version=v4.7.1, .NETFramework,Version=v4.7.2, .NETFramework,Version=v4.8”而不是项目目标框架“net5.0-windows7.0”还原包“WPF-UI 4.1.0”。此包可能与项目不完全兼容。",
+      "libraryId": "WPF-UI",
+      "targetGraphs": [
+        "net5.0-windows7.0"
+      ]
+    }
+  ]
+}

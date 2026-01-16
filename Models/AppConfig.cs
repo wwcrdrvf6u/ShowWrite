@@ -20,6 +20,7 @@ namespace ShowWrite.Models
         public bool DeveloperMode { get; set; } = false;
         public double PalmEraserThreshold { get; set; } = 100.0;
         public bool EnablePalmEraser { get; set; } = true;
+        public string Theme { get; set; } = "Light";
 
         // 每个摄像头的配置字典（新格式）
         public Dictionary<int, CameraConfig> CameraConfigs { get; set; } = new Dictionary<int, CameraConfig>();

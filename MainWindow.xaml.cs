@@ -80,6 +80,9 @@ namespace ShowWrite
         private bool _isSplashShown = false;
         private const int SPLASH_DISPLAY_TIME = 2000; // 启动图显示时间（毫秒）
 
+        // 主题相关
+        private ResourceDictionary _currentTheme;
+
         public MainWindow()
         {
             // 显示启动图
@@ -417,6 +420,9 @@ namespace ShowWrite
 
                 // 加载配置
                 LoadConfig();
+
+                // 应用主题
+                ApplyTheme();
 
                 // 检查摄像头可用性
                 if (!_cameraManager.CheckCameraAvailability())
@@ -2021,6 +2027,9 @@ namespace ShowWrite
                 // 保存配置
                 SaveConfig();
 
+                // 重新应用主题
+                ApplyTheme();
+
                 // 检查是否需要切换摄像头
                 if (_cameraManager.CurrentCameraIndex != config.CameraIndex)
                 {
@@ -2199,11 +2208,6 @@ namespace ShowWrite
                 config = new AppConfig();
             }
         }
-
-        /// <summary>
-        /// 迁移旧的校正配置到新的格式
-        /// </summary>
-        // 在 MainWindow.xaml.cs 中，找到 MigrateOldCorrectionConfig 方法，将其修改为：
 
         /// <summary>
         /// 迁移旧的校正配置到新的格式
@@ -2478,7 +2482,8 @@ namespace ShowWrite
                     EnableHardwareAcceleration = config.EnableHardwareAcceleration,
                     EnableFrameProcessing = config.EnableFrameProcessing,
                     FrameRateLimit = config.FrameRateLimit,
-                    CameraConfigs = config.CameraConfigs
+                    CameraConfigs = config.CameraConfigs,
+                    Theme = config.Theme
                 };
 
                 var json = JsonConvert.SerializeObject(cfg, Formatting.Indented);
@@ -2490,6 +2495,109 @@ namespace ShowWrite
             {
                 Logger.Error("MainWindow", $"保存配置失败: {ex.Message}", ex);
             }
+        }
+
+        #endregion
+
+        #region 主题相关方法
+
+        /// <summary>
+        /// 应用主题
+        /// </summary>
+        private void ApplyTheme()
+        {
+            if (config == null) return;
+
+            try
+            {
+                // 移除当前主题资源
+                if (_currentTheme != null)
+                {
+                    Resources.MergedDictionaries.Remove(_currentTheme);
+                }
+
+                // 加载新主题资源
+                string themePath;
+                switch (config.Theme)
+                {
+                    case "Dark":
+                        themePath = "Themes/DarkTheme.xaml";
+                        break;
+                    case "Light":
+                    default:
+                        themePath = "Themes/LightTheme.xaml";
+                        break;
+                }
+
+                _currentTheme = new ResourceDictionary();
+                _currentTheme.Source = new Uri(themePath, UriKind.Relative);
+                Resources.MergedDictionaries.Add(_currentTheme);
+
+                // 应用窗口背景颜色
+                this.Background = Resources["WindowBackgroundBrush"] as Brush;
+
+                // 应用工具栏背景颜色
+                if (BottomToolbar != null)
+                {
+                    BottomToolbar.Background = Resources["ToolbarBackgroundBrush"] as Brush;
+                }
+
+                // 更新样式引用
+                UpdateDynamicStyles();
+
+                Logger.Info("MainWindow", $"主题已应用: {config.Theme}");
+            }
+            catch (Exception ex)
+            {
+                Logger.Error("MainWindow", $"加载主题时出错: {ex.Message}", ex);
+                MessageBox.Show($"加载主题时出错: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        /// <summary>
+        /// 更新动态样式
+        /// </summary>
+        private void UpdateDynamicStyles()
+        {
+            try
+            {
+                // 更新按钮样式引用
+                var buttonStyle = Resources["ButtonStyle"] as Style;
+                var toggleButtonStyle = Resources["ToggleButtonStyle"] as Style;
+                var toolToggleButtonStyle = Resources["ToolToggleButtonStyle"] as Style;
+                var photoButtonStyle = Resources["PhotoButtonStyle"] as Style;
+                var moreButtonStyle = Resources["MoreButtonStyle"] as Style;
+
+                // 这里可以添加样式更新的具体逻辑
+                // 例如，为特定控件重新应用样式
+                if (MoveBtn != null && toolToggleButtonStyle != null)
+                {
+                    MoveBtn.Style = toolToggleButtonStyle;
+                }
+                if (PenBtn != null && toolToggleButtonStyle != null)
+                {
+                    PenBtn.Style = toolToggleButtonStyle;
+                }
+                if (EraserBtn != null && toolToggleButtonStyle != null)
+                {
+                    EraserBtn.Style = toolToggleButtonStyle;
+                }
+
+                Logger.Debug("MainWindow", "动态样式已更新");
+            }
+            catch (Exception ex)
+            {
+                Logger.Error("MainWindow", $"更新动态样式失败: {ex.Message}", ex);
+            }
+        }
+
+        /// <summary>
+        /// 刷新主题（可以从设置窗口回调）
+        /// </summary>
+        public void RefreshTheme()
+        {
+            LoadConfig();
+            ApplyTheme();
         }
 
         #endregion

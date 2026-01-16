@@ -1,0 +1,37 @@
+﻿{
+  "StartMaximized": true,
+  "AutoStartCamera": true,
+  "CameraIndex": 0,
+  "DefaultPenWidth": 3.0,
+  "DefaultPenColor": "#FF0000FF",
+  "EnableHardwareAcceleration": true,
+  "EnableFrameProcessing": true,
+  "FrameRateLimit": 0,
+  "EraserSizeMethod": 0,
+  "AreaThreshold": 2000.0,
+  "SpeedThreshold": 50.0,
+  "ManualEraserSize": 20.0,
+  "DeveloperMode": false,
+  "PalmEraserThreshold": 100.0,
+  "EnablePalmEraser": true,
+  "Theme": "Dark",
+  "CameraConfigs": {
+    "0": {
+      "CameraIndex": 0,
+      "CameraName": "e2eSoft VCam",
+      "Adjustments": {
+        "Brightness": 300,
+        "Contrast": 100,
+        "Orientation": 0,
+        "FlipHorizontal": false
+      },
+      "PerspectivePoints": [],
+      "SourceWidth": 0,
+      "SourceHeight": 0,
+      "OriginalCameraWidth": 0,
+      "OriginalCameraHeight": 0,
+      "HasCorrection": false
+    }
+  },
+  "CameraCorrections": {}
+}
