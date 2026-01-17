@@ -23,6 +23,16 @@ using System.Windows.Threading;
 using ZXing;
 using MessageBox = System.Windows.MessageBox;
 
+// 为有冲突的类型添加明确的别名
+using WinPoint = System.Windows.Point;
+using WinMouseEventArgs = System.Windows.Input.MouseEventArgs;
+using WinCursors = System.Windows.Input.Cursors;
+using WinComboBox = System.Windows.Controls.ComboBox;
+using WinOrientation = System.Windows.Controls.Orientation;
+using WinButton = System.Windows.Controls.Button;
+using WinBrushes = System.Windows.Media.Brushes;
+using WinBrush = System.Windows.Media.Brush;
+
 namespace ShowWrite
 {
     public partial class MainWindow : Window
@@ -72,7 +82,7 @@ namespace ShowWrite
         private bool _isEnteringCorrectionMode = false; // 防止重复进入的保护机制
         private System.Drawing.Bitmap _originalCorrectionFrame = null;
         private int _draggingPointIndex = -1;
-        private System.Windows.Point[] _correctionPoints = new System.Windows.Point[4];
+        private WinPoint[] _correctionPoints = new WinPoint[4];
         private bool _isCorrectionModeInitialized = false;
 
         // 启动图相关
@@ -623,7 +633,7 @@ namespace ShowWrite
         /// <summary>
         /// 触控中心变化事件
         /// </summary>
-        private void OnTouchCenterChanged(System.Windows.Point center)
+        private void OnTouchCenterChanged(WinPoint center)
         {
             Dispatcher.Invoke(() =>
             {
@@ -676,7 +686,7 @@ namespace ShowWrite
             _drawingManager.HandleMouseDown(e);
         }
 
-        private void VideoArea_MouseMove(object sender, MouseEventArgs e)
+        private void VideoArea_MouseMove(object sender, WinMouseEventArgs e)
         {
             if (_isPerspectiveCorrectionMode) return;
             _panZoomManager.HandleMouseMove(e, _drawingManager.CurrentMode);
@@ -1000,7 +1010,7 @@ namespace ShowWrite
 
                 // 释放可能的其他鼠标捕获
                 Mouse.OverrideCursor = null;
-                Cursor = Cursors.Arrow;
+                Cursor = WinCursors.Arrow;
 
                 Logger.Debug("MainWindow", "所有鼠标捕获已释放");
             }
@@ -1034,10 +1044,10 @@ namespace ShowWrite
                 double marginX = videoWidth * 0.15;
                 double marginY = videoHeight * 0.15;
 
-                _correctionPoints[0] = new System.Windows.Point(marginX, marginY);
-                _correctionPoints[1] = new System.Windows.Point(videoWidth - marginX, marginY);
-                _correctionPoints[2] = new System.Windows.Point(videoWidth - marginX, videoHeight - marginY);
-                _correctionPoints[3] = new System.Windows.Point(marginX, videoHeight - marginY);
+                _correctionPoints[0] = new WinPoint(marginX, marginY);
+                _correctionPoints[1] = new WinPoint(videoWidth - marginX, marginY);
+                _correctionPoints[2] = new WinPoint(videoWidth - marginX, videoHeight - marginY);
+                _correctionPoints[3] = new WinPoint(marginX, videoHeight - marginY);
 
                 // 设置校正画布的尺寸
                 CorrectionCanvas.Width = videoWidth;
@@ -1223,7 +1233,7 @@ namespace ShowWrite
         /// <summary>
         /// 校正画布鼠标移动事件（修复版）
         /// </summary>
-        private void CorrectionCanvas_MouseMove(object sender, MouseEventArgs e)
+        private void CorrectionCanvas_MouseMove(object sender, WinMouseEventArgs e)
         {
             try
             {
@@ -1276,7 +1286,7 @@ namespace ShowWrite
 
                 // 确保鼠标状态正常
                 Mouse.OverrideCursor = null;
-                Cursor = Cursors.Arrow;
+                Cursor = WinCursors.Arrow;
             }
             catch (Exception ex)
             {
@@ -1842,7 +1852,7 @@ namespace ShowWrite
 
             var stackPanel = new StackPanel { Margin = new Thickness(10) };
 
-            var comboBox = new ComboBox
+            var comboBox = new WinComboBox
             {
                 Margin = new Thickness(0, 0, 0, 10),
                 ItemsSource = cameras,
@@ -1851,11 +1861,11 @@ namespace ShowWrite
 
             var buttonPanel = new StackPanel
             {
-                Orientation = Orientation.Horizontal,
-                HorizontalAlignment = HorizontalAlignment.Right
+                Orientation = WinOrientation.Horizontal,
+                HorizontalAlignment = System.Windows.HorizontalAlignment.Right
             };
 
-            var okButton = new Button
+            var okButton = new WinButton
             {
                 Content = "确定",
                 Width = 80,
@@ -1863,7 +1873,7 @@ namespace ShowWrite
                 IsDefault = true
             };
 
-            var cancelButton = new Button
+            var cancelButton = new WinButton
             {
                 Content = "取消",
                 Width = 80,
@@ -2094,11 +2104,11 @@ namespace ShowWrite
                 var textBlock = new TextBlock
                 {
                     Text = "未检测到摄像头\n批注功能仍可使用",
-                    Foreground = Brushes.White,
+                    Foreground = WinBrushes.White,
                     FontSize = 16,
                     FontWeight = FontWeights.Bold,
                     TextAlignment = TextAlignment.Center,
-                    HorizontalAlignment = HorizontalAlignment.Center,
+                    HorizontalAlignment = System.Windows.HorizontalAlignment.Center,
                     VerticalAlignment = VerticalAlignment.Center
                 };
 
@@ -2534,12 +2544,12 @@ namespace ShowWrite
                 Resources.MergedDictionaries.Add(_currentTheme);
 
                 // 应用窗口背景颜色
-                this.Background = Resources["WindowBackgroundBrush"] as Brush;
+                this.Background = Resources["WindowBackgroundBrush"] as WinBrush;
 
                 // 应用工具栏背景颜色
                 if (BottomToolbar != null)
                 {
-                    BottomToolbar.Background = Resources["ToolbarBackgroundBrush"] as Brush;
+                    BottomToolbar.Background = Resources["ToolbarBackgroundBrush"] as WinBrush;
                 }
 
                 // 更新样式引用
