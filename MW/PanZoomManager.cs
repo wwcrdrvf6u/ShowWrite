@@ -2,6 +2,9 @@
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
+using Application = System.Windows.Application;
+using Point = System.Windows.Point;
+
 
 namespace ShowWrite
 {
@@ -10,6 +13,7 @@ namespace ShowWrite
     /// </summary>
     public class PanZoomManager
     {
+
         private readonly ScaleTransform _zoomTransform;
         private readonly TranslateTransform _panTransform;
         private readonly UIElement _targetElement;
@@ -17,7 +21,7 @@ namespace ShowWrite
 
         private double _currentZoom = 1.0;
         private bool _isPanning = false;
-        private Point _lastMousePos;
+        private System.Windows.Point _lastMousePos; // 明确命名空间
 
         // 笔迹缩放补偿相关
         private double _originalPenWidth = 2.0;
@@ -112,11 +116,11 @@ namespace ShowWrite
                 try
                 {
                     _isPanning = true;
-                    _lastMousePos = e.GetPosition(Application.Current.MainWindow);
+                    _lastMousePos = e.GetPosition(System.Windows.Application.Current.MainWindow);
                     _targetElement.CaptureMouse();
                     e.Handled = true;
 
-                    Application.Current.MainWindow.Cursor = Cursors.SizeAll;
+                    System.Windows.Application.Current.MainWindow.Cursor = System.Windows.Input.Cursors.SizeAll;
                     Console.WriteLine($"开始拖拽: 起始点=({_lastMousePos.X:F1}, {_lastMousePos.Y:F1})");
                 }
                 catch (Exception ex)
@@ -130,7 +134,7 @@ namespace ShowWrite
         /// <summary>
         /// 鼠标移动事件处理
         /// </summary>
-        public void HandleMouseMove(MouseEventArgs e, DrawingManager.ToolMode currentMode)
+        public void HandleMouseMove(System.Windows.Input.MouseEventArgs e, DrawingManager.ToolMode currentMode)
         {
             if (!CheckEnabled()) return;
 
@@ -138,7 +142,7 @@ namespace ShowWrite
             {
                 try
                 {
-                    var currentPos = e.GetPosition(Application.Current.MainWindow);
+                    var currentPos = e.GetPosition(System.Windows.Application.Current.MainWindow);
                     _panTransform.X += currentPos.X - _lastMousePos.X;
                     _panTransform.Y += currentPos.Y - _lastMousePos.Y;
                     _lastMousePos = currentPos;
@@ -164,7 +168,7 @@ namespace ShowWrite
                 {
                     _isPanning = false;
                     _targetElement.ReleaseMouseCapture();
-                    Application.Current.MainWindow.Cursor = Cursors.Arrow;
+                    Application.Current.MainWindow.Cursor = System.Windows.Input.Cursors.Arrow;
                     e.Handled = true;
                     Console.WriteLine($"结束拖拽: 最终平移=({_panTransform.X:F1}, {_panTransform.Y:F1})");
                 }

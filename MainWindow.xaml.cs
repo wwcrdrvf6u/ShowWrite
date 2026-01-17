@@ -1,31 +1,23 @@
-﻿using AForge;
-using AForge.Imaging.Filters;
-using Microsoft.Win32;
+﻿using AForge.Imaging.Filters;
 using Newtonsoft.Json;
 using ShowWrite.Models;
 using ShowWrite.Services;
-using System;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
-using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Controls.Primitives;
 using System.Windows.Ink;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
 using System.Windows.Threading;
-using ZXing;
 using MessageBox = System.Windows.MessageBox;
+using WinMouseEventArgs = System.Windows.Input.MouseEventArgs;
 
 // 为有冲突的类型添加明确的别名
 using WinPoint = System.Windows.Point;
-using WinMouseEventArgs = System.Windows.Input.MouseEventArgs;
 using WinCursors = System.Windows.Input.Cursors;
 using WinComboBox = System.Windows.Controls.ComboBox;
 using WinOrientation = System.Windows.Controls.Orientation;
