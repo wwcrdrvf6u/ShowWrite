@@ -1,5 +1,5 @@
 ﻿ShowWrite
-2.1.5.0
+
 
 winexe
 C#
@@ -12,7 +12,7 @@ TRACE;DEBUG;NET;NET8_0;NETCOREAPP;WINDOWS;WINDOWS7_0;NET5_0_OR_GREATER;NET6_0_OR
 C:\Users\vum\Source\Repos\ShowWrite\App.xaml
 7285330021
 1-1721525216
-24-1344213700
+221115061648
 218-1766099576
 AdjustVideoWindow.xaml;MainWindow.xaml;MW\SplashWindow.xaml;PenSettingsWindow.xaml;SettingsWindow.xaml;themes\DarkTheme.xaml;themes\LightTheme.xaml;
 

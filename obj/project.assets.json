@@ -60,10 +60,10 @@
           "lib/AForge.Video.DirectShow.dll": {}
         }
       },
-      "Magick.NET-Q8-AnyCPU/14.10.1": {
+      "Magick.NET-Q8-AnyCPU/14.10.2": {
         "type": "package",
         "dependencies": {
-          "Magick.NET.Core": "14.10.1"
+          "Magick.NET.Core": "14.10.2"
         },
         "compile": {
           "lib/net8.0/Magick.NET-Q8-AnyCPU.dll": {
@@ -113,7 +113,7 @@
           }
         }
       },
-      "Magick.NET.Core/14.10.1": {
+      "Magick.NET.Core/14.10.2": {
         "type": "package",
         "compile": {
           "lib/net8.0/Magick.NET.Core.dll": {
@@ -252,10 +252,10 @@
         "lib/AForge.Video.DirectShow.xml"
       ]
     },
-    "Magick.NET-Q8-AnyCPU/14.10.1": {
-      "sha512": "coIcvwLoCxkUgsiBhvFoxt7nP2DVO9yK/34Lkj9snCXKLz8e+KR1cv99/Kjos5oK5/3QpX5LD6uX/6G1tNqDwA==",
+    "Magick.NET-Q8-AnyCPU/14.10.2": {
+      "sha512": "vKhZZ5hmeej2fGQI77IxY4dlcfBFKAWi6sAmiQmKmRZqh4XMGnk+NfxGHyWrkhVDr2oerIonrFmHJ83EkJLcmg==",
       "type": "package",
-      "path": "magick.net-q8-anycpu/14.10.1",
+      "path": "magick.net-q8-anycpu/14.10.2",
       "files": [
         ".nupkg.metadata",
         ".signature.p7s",
@@ -268,7 +268,7 @@
         "lib/net8.0/Magick.NET-Q8-AnyCPU.xml",
         "lib/netstandard20/Magick.NET-Q8-AnyCPU.dll",
         "lib/netstandard20/Magick.NET-Q8-AnyCPU.xml",
-        "magick.net-q8-anycpu.14.10.1.nupkg.sha512",
+        "magick.net-q8-anycpu.14.10.2.nupkg.sha512",
         "magick.net-q8-anycpu.nuspec",
         "runtimes/linux-arm64/native/Magick.Native-Q8-arm64.dll.so",
         "runtimes/linux-musl-x64/native/Magick.Native-Q8-x64.dll.so",
@@ -280,10 +280,10 @@
         "runtimes/win-x86/native/Magick.Native-Q8-x86.dll"
       ]
     },
-    "Magick.NET.Core/14.10.1": {
-      "sha512": "siXvvltWNTPKMNoywZzyrUO3LP9YksZlIQxEIFbMgVAQjmwP99dxXbycj+JTnU0ePH7PZeWhgTo/10+LQE3Fcg==",
+    "Magick.NET.Core/14.10.2": {
+      "sha512": "22zhy2QO7GrMPFZZEN5X+oAoBi7IWhq8fqH0dQy/d6jzScLeTfZV0a69CRzmf7LbiRPwPSeguHvpfgrNaAGmeQ==",
       "type": "package",
-      "path": "magick.net.core/14.10.1",
+      "path": "magick.net.core/14.10.2",
       "files": [
         ".nupkg.metadata",
         ".signature.p7s",
@@ -294,7 +294,7 @@
         "lib/net8.0/Magick.NET.Core.xml",
         "lib/netstandard20/Magick.NET.Core.dll",
         "lib/netstandard20/Magick.NET.Core.xml",
-        "magick.net.core.14.10.1.nupkg.sha512",
+        "magick.net.core.14.10.2.nupkg.sha512",
         "magick.net.core.nuspec"
       ]
     },
@@ -489,7 +489,7 @@
       "AForge.Imaging >= 2.2.5",
       "AForge.Video >= 2.2.5",
       "AForge.Video.DirectShow >= 2.2.5",
-      "Magick.NET-Q8-AnyCPU >= 14.10.1",
+      "Magick.NET-Q8-AnyCPU >= 14.10.2",
       "Newtonsoft.Json >= 13.0.3",
       "WPF-UI >= 4.2.0",
       "ZXing.Net >= 0.16.10"
@@ -502,11 +502,11 @@
   "project": {
     "version": "2.1.5",
     "restore": {
-      "projectUniqueName": "C:\\Users\\vum\\source\\repos\\ShowWrite\\ShowWrite.csproj",
+      "projectUniqueName": "C:\\Users\\vum\\Source\\Repos\\ShowWrite\\ShowWrite.csproj",
       "projectName": "ShowWrite",
-      "projectPath": "C:\\Users\\vum\\source\\repos\\ShowWrite\\ShowWrite.csproj",
+      "projectPath": "C:\\Users\\vum\\Source\\Repos\\ShowWrite\\ShowWrite.csproj",
       "packagesPath": "C:\\Users\\vum\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\vum\\source\\repos\\ShowWrite\\obj\\",
+      "outputPath": "C:\\Users\\vum\\Source\\Repos\\ShowWrite\\obj\\",
       "projectStyle": "PackageReference",
       "fallbackFolders": [
         "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
@@ -560,7 +560,7 @@
           },
           "Magick.NET-Q8-AnyCPU": {
             "target": "Package",
-            "version": "[14.10.1, )"
+            "version": "[14.10.2, )"
           },
           "Newtonsoft.Json": {
             "target": "Package",
@@ -594,7 +594,7 @@
             "privateAssets": "none"
           }
         },
-        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.101/PortableRuntimeIdentifierGraph.json"
+        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.102/PortableRuntimeIdentifierGraph.json"
       }
     }
   },
@@ -603,7 +603,7 @@
       "code": "NU1701",
       "level": "Warning",
       "warningLevel": 1,
-      "message": "已使用“.NETFramework,Version=v4.6.1, .NETFramework,Version=v4.6.2, .NETFramework,Version=v4.7, .NETFramework,Version=v4.7.1, .NETFramework,Version=v4.7.2, .NETFramework,Version=v4.8, .NETFramework,Version=v4.8.1”而不是项目目标框架“net8.0-windows7.0”还原包“AForge 2.2.5”。此包可能与项目不完全兼容。",
+      "message": "Package 'AForge 2.2.5' was restored using '.NETFramework,Version=v4.6.1, .NETFramework,Version=v4.6.2, .NETFramework,Version=v4.7, .NETFramework,Version=v4.7.1, .NETFramework,Version=v4.7.2, .NETFramework,Version=v4.8, .NETFramework,Version=v4.8.1' instead of the project target framework 'net8.0-windows7.0'. This package may not be fully compatible with your project.",
       "libraryId": "AForge",
       "targetGraphs": [
         "net8.0-windows7.0"
@@ -613,7 +613,7 @@
       "code": "NU1701",
       "level": "Warning",
       "warningLevel": 1,
-      "message": "已使用“.NETFramework,Version=v4.6.1, .NETFramework,Version=v4.6.2, .NETFramework,Version=v4.7, .NETFramework,Version=v4.7.1, .NETFramework,Version=v4.7.2, .NETFramework,Version=v4.8, .NETFramework,Version=v4.8.1”而不是项目目标框架“net8.0-windows7.0”还原包“AForge.Imaging 2.2.5”。此包可能与项目不完全兼容。",
+      "message": "Package 'AForge.Imaging 2.2.5' was restored using '.NETFramework,Version=v4.6.1, .NETFramework,Version=v4.6.2, .NETFramework,Version=v4.7, .NETFramework,Version=v4.7.1, .NETFramework,Version=v4.7.2, .NETFramework,Version=v4.8, .NETFramework,Version=v4.8.1' instead of the project target framework 'net8.0-windows7.0'. This package may not be fully compatible with your project.",
       "libraryId": "AForge.Imaging",
       "targetGraphs": [
         "net8.0-windows7.0"
@@ -623,7 +623,7 @@
       "code": "NU1701",
       "level": "Warning",
       "warningLevel": 1,
-      "message": "已使用“.NETFramework,Version=v4.6.1, .NETFramework,Version=v4.6.2, .NETFramework,Version=v4.7, .NETFramework,Version=v4.7.1, .NETFramework,Version=v4.7.2, .NETFramework,Version=v4.8, .NETFramework,Version=v4.8.1”而不是项目目标框架“net8.0-windows7.0”还原包“AForge.Math 2.2.5”。此包可能与项目不完全兼容。",
+      "message": "Package 'AForge.Math 2.2.5' was restored using '.NETFramework,Version=v4.6.1, .NETFramework,Version=v4.6.2, .NETFramework,Version=v4.7, .NETFramework,Version=v4.7.1, .NETFramework,Version=v4.7.2, .NETFramework,Version=v4.8, .NETFramework,Version=v4.8.1' instead of the project target framework 'net8.0-windows7.0'. This package may not be fully compatible with your project.",
       "libraryId": "AForge.Math",
       "targetGraphs": [
         "net8.0-windows7.0"
@@ -633,7 +633,7 @@
       "code": "NU1701",
       "level": "Warning",
       "warningLevel": 1,
-      "message": "已使用“.NETFramework,Version=v4.6.1, .NETFramework,Version=v4.6.2, .NETFramework,Version=v4.7, .NETFramework,Version=v4.7.1, .NETFramework,Version=v4.7.2, .NETFramework,Version=v4.8, .NETFramework,Version=v4.8.1”而不是项目目标框架“net8.0-windows7.0”还原包“AForge.Video 2.2.5”。此包可能与项目不完全兼容。",
+      "message": "Package 'AForge.Video 2.2.5' was restored using '.NETFramework,Version=v4.6.1, .NETFramework,Version=v4.6.2, .NETFramework,Version=v4.7, .NETFramework,Version=v4.7.1, .NETFramework,Version=v4.7.2, .NETFramework,Version=v4.8, .NETFramework,Version=v4.8.1' instead of the project target framework 'net8.0-windows7.0'. This package may not be fully compatible with your project.",
       "libraryId": "AForge.Video",
       "targetGraphs": [
         "net8.0-windows7.0"
@@ -643,7 +643,7 @@
       "code": "NU1701",
       "level": "Warning",
       "warningLevel": 1,
-      "message": "已使用“.NETFramework,Version=v4.6.1, .NETFramework,Version=v4.6.2, .NETFramework,Version=v4.7, .NETFramework,Version=v4.7.1, .NETFramework,Version=v4.7.2, .NETFramework,Version=v4.8, .NETFramework,Version=v4.8.1”而不是项目目标框架“net8.0-windows7.0”还原包“AForge.Video.DirectShow 2.2.5”。此包可能与项目不完全兼容。",
+      "message": "Package 'AForge.Video.DirectShow 2.2.5' was restored using '.NETFramework,Version=v4.6.1, .NETFramework,Version=v4.6.2, .NETFramework,Version=v4.7, .NETFramework,Version=v4.7.1, .NETFramework,Version=v4.7.2, .NETFramework,Version=v4.8, .NETFramework,Version=v4.8.1' instead of the project target framework 'net8.0-windows7.0'. This package may not be fully compatible with your project.",
       "libraryId": "AForge.Video.DirectShow",
       "targetGraphs": [
         "net8.0-windows7.0"

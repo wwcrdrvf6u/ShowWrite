@@ -8,14 +8,16 @@
     <SolidColorBrush x:Key="TextBrush" Color="#FFFFFF"/>
     <SolidColorBrush x:Key="PopupBackground" Color="#2C3E50"/>
     <SolidColorBrush x:Key="PopupBorder" Color="#34495E"/>
-    <SolidColorBrush x:Key="ButtonBackground" Color="#3C3C3C"/>
-    <SolidColorBrush x:Key="ButtonBorder" Color="#555555"/>
-    <SolidColorBrush x:Key="ButtonHoverBackground" Color="#505050"/>
-    <SolidColorBrush x:Key="ButtonPressedBackground" Color="#606060"/>
+
+    <!-- 按钮相关颜色 - 改为深蓝色主题 -->
+    <SolidColorBrush x:Key="ButtonBackground" Color="#34495E"/>
+    <SolidColorBrush x:Key="ButtonBorder" Color="#2C3E50"/>
+    <SolidColorBrush x:Key="ButtonHoverBackground" Color="#4A6A8A"/>
+    <SolidColorBrush x:Key="ButtonPressedBackground" Color="#2C3E50"/>
     <SolidColorBrush x:Key="ToggleButtonCheckedBackground" Color="#2980B9"/>
     <SolidColorBrush x:Key="ToggleButtonCheckedBorder" Color="#1C6399"/>
 
-    <!-- 按钮基础样式 - 深色主题 -->
+    <!-- 按钮基础样式 - 深蓝色主题 -->
     <Style x:Key="ButtonStyle" TargetType="Button">
         <Setter Property="Background" Value="{StaticResource ButtonBackground}"/>
         <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
@@ -42,7 +44,7 @@
         </Setter>
     </Style>
 
-    <!-- ToggleButton基础样式 - 深色主题 -->
+    <!-- ToggleButton基础样式 - 深蓝色主题 -->
     <Style x:Key="ToggleButtonStyle" TargetType="ToggleButton">
         <Setter Property="Background" Value="{StaticResource ButtonBackground}"/>
         <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
@@ -73,9 +75,9 @@
         </Setter>
     </Style>
 
-    <!-- 移动/画笔/橡皮擦特殊样式 -->
+    <!-- 移动/画笔/橡皮擦特殊样式 - 这三个按钮被选中时变成蓝色 -->
     <Style x:Key="ToolToggleButtonStyle" TargetType="ToggleButton" BasedOn="{StaticResource ToggleButtonStyle}">
-        <!-- 继承ToggleButtonStyle的所有属性 -->
+        <!-- 继承ToggleButtonStyle的所有属性，包括选中时变蓝色 -->
     </Style>
 
     <!-- 照片按钮特殊样式 -->
@@ -83,7 +85,7 @@
         <!-- 继承ButtonStyle的所有属性 -->
     </Style>
 
-    <!-- 更多按钮样式 - 深色主题 -->
+    <!-- 更多按钮样式 - 深蓝色主题 -->
     <Style x:Key="MoreButtonStyle" TargetType="Button" BasedOn="{StaticResource ButtonStyle}">
         <!-- 继承ButtonStyle的所有属性 -->
     </Style>

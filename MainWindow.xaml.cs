@@ -24,6 +24,7 @@ using WinOrientation = System.Windows.Controls.Orientation;
 using WinButton = System.Windows.Controls.Button;
 using WinBrushes = System.Windows.Media.Brushes;
 using WinBrush = System.Windows.Media.Brush;
+using Button = System.Windows.Controls.Button;
 
 namespace ShowWrite
 {
@@ -254,6 +255,38 @@ namespace ShowWrite
             this.Focus();
         }
 
+        private void SwitchTheme(bool useDarkTheme)
+        {
+            // 清除现有资源
+            this.Resources.MergedDictionaries.Clear();
+
+            // 创建新的资源字典
+            var resourceDictionary = new ResourceDictionary();
+
+            // 根据主题加载对应的资源文件
+            if (useDarkTheme)
+            {
+                resourceDictionary.MergedDictionaries.Add(
+                    new ResourceDictionary() { Source = new Uri("themes/DarkTheme.xaml", UriKind.Relative) });
+            }
+            else
+            {
+                resourceDictionary.MergedDictionaries.Add(
+                    new ResourceDictionary() { Source = new Uri("themes/LightTheme.xaml", UriKind.Relative) });
+            }
+
+            // 添加画笔设置按钮样式
+            var penSettingsStyle = new Style(typeof(Button));
+            penSettingsStyle.Setters.Add(new Setter(Button.WidthProperty, 32.0));
+            penSettingsStyle.Setters.Add(new Setter(Button.HeightProperty, 32.0));
+            penSettingsStyle.Setters.Add(new Setter(Button.MarginProperty, new Thickness(2)));
+            penSettingsStyle.Setters.Add(new Setter(Button.BorderThicknessProperty, new Thickness(1)));
+            penSettingsStyle.Setters.Add(new Setter(Button.BorderBrushProperty, new SolidColorBrush(System.Windows.Media.Color.FromRgb(85, 85, 85))));
+            resourceDictionary.Add("PenSettingsButtonStyle", penSettingsStyle);
+
+            // 应用新的资源字典
+            this.Resources = resourceDictionary;
+        }
         private void MainWindow_SizeChanged(object sender, SizeChangedEventArgs e)
         {
             // 如果在校正模式下，重新初始化校正点位置

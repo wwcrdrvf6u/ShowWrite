@@ -7,8 +7,12 @@
       "RelativeMoniker": "D:0:0:{1FEBD063-10B8-47FD-A2A6-B3F3270EB83C}|ShowWrite.csproj|solutionrelative:mainwindow.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{1FEBD063-10B8-47FD-A2A6-B3F3270EB83C}|ShowWrite.csproj|c:\\users\\vum\\source\\repos\\showwrite\\mw\\panzoommanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{1FEBD063-10B8-47FD-A2A6-B3F3270EB83C}|ShowWrite.csproj|solutionrelative:mw\\panzoommanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{1FEBD063-10B8-47FD-A2A6-B3F3270EB83C}|ShowWrite.csproj|c:\\users\\vum\\source\\repos\\showwrite\\mainwindow.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}",
+      "RelativeMoniker": "D:0:0:{1FEBD063-10B8-47FD-A2A6-B3F3270EB83C}|ShowWrite.csproj|solutionrelative:mainwindow.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{1FEBD063-10B8-47FD-A2A6-B3F3270EB83C}|ShowWrite.csproj|c:\\users\\vum\\source\\repos\\showwrite\\themes\\darktheme.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}",
+      "RelativeMoniker": "D:0:0:{1FEBD063-10B8-47FD-A2A6-B3F3270EB83C}|ShowWrite.csproj|solutionrelative:themes\\darktheme.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}"
     }
   ],
   "DocumentGroupContainers": [
@@ -18,7 +22,7 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 3,
+          "SelectedChildIndex": 4,
           "Children": [
             {
               "$type": "Bookmark",
@@ -31,14 +35,25 @@
             {
               "$type": "Document",
               "DocumentIndex": 1,
-              "Title": "PanZoomManager.cs",
-              "DocumentMoniker": "C:\\Users\\vum\\source\\repos\\ShowWrite\\MW\\PanZoomManager.cs",
-              "RelativeDocumentMoniker": "MW\\PanZoomManager.cs",
-              "ToolTip": "C:\\Users\\vum\\source\\repos\\ShowWrite\\MW\\PanZoomManager.cs",
-              "RelativeToolTip": "MW\\PanZoomManager.cs",
-              "ViewState": "AgIAAJUAAAAAAAAAAAAvwKwAAABSAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-01-17T14:51:02.204Z",
+              "Title": "MainWindow.xaml",
+              "DocumentMoniker": "C:\\Users\\vum\\source\\repos\\ShowWrite\\MainWindow.xaml",
+              "RelativeDocumentMoniker": "MainWindow.xaml",
+              "ToolTip": "C:\\Users\\vum\\source\\repos\\ShowWrite\\MainWindow.xaml*",
+              "RelativeToolTip": "MainWindow.xaml*",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003549|",
+              "WhenOpened": "2026-01-23T12:32:08.08Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "DarkTheme.xaml",
+              "DocumentMoniker": "C:\\Users\\vum\\source\\repos\\ShowWrite\\themes\\DarkTheme.xaml",
+              "RelativeDocumentMoniker": "themes\\DarkTheme.xaml",
+              "ToolTip": "C:\\Users\\vum\\source\\repos\\ShowWrite\\themes\\DarkTheme.xaml",
+              "RelativeToolTip": "themes\\DarkTheme.xaml",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003549|",
+              "WhenOpened": "2026-01-23T12:11:49.116Z",
               "EditorCaption": ""
             },
             {
@@ -47,9 +62,9 @@
               "Title": "MainWindow.xaml.cs",
               "DocumentMoniker": "C:\\Users\\vum\\source\\repos\\ShowWrite\\MainWindow.xaml.cs",
               "RelativeDocumentMoniker": "MainWindow.xaml.cs",
-              "ToolTip": "C:\\Users\\vum\\source\\repos\\ShowWrite\\MainWindow.xaml.cs",
-              "RelativeToolTip": "MainWindow.xaml.cs",
-              "ViewState": "AgIAAJcCAAAAAAAAAAAtwKsCAAAsAAAAAAAAAA==",
+              "ToolTip": "C:\\Users\\vum\\source\\repos\\ShowWrite\\MainWindow.xaml.cs*",
+              "RelativeToolTip": "MainWindow.xaml.cs*",
+              "ViewState": "AgIAAAcBAAAAAAAAAAASwCIBAAAJAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2026-01-17T13:58:01.776Z",
               "EditorCaption": ""
