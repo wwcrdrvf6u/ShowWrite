@@ -55,6 +55,8 @@ namespace ShowWrite
 
         // UI相关
         private SolidColorBrush _noCameraBackground = new SolidColorBrush(System.Windows.Media.Color.FromRgb(40, 40, 40));
+        private Button _currentSelectedColorButton = null;
+        private string _currentPenColor = "Black";
 
         // 配置文件路径
         private readonly string configPath = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "config.json");
@@ -2934,6 +2936,141 @@ namespace ShowWrite
             }
         }
 
+
+
+        // 更新选中的对钩图标
+        private void UpdateSelectedCheckIcon(Button selectedButton)
+        {
+            // 隐藏之前选中的按钮的对钩
+            if (_currentSelectedColorButton != null)
+            {
+                var grid = _currentSelectedColorButton.Content as Grid;
+                if (grid != null)
+                {
+                    foreach (var child in grid.Children)
+                    {
+                        if (child is System.Windows.Shapes.Path checkIcon)
+                        {
+                            checkIcon.Visibility = Visibility.Collapsed;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            // 显示当前选中的按钮的对钩
+            var selectedGrid = selectedButton.Content as Grid;
+            if (selectedGrid != null)
+            {
+                foreach (var child in selectedGrid.Children)
+                {
+                    if (child is System.Windows.Shapes.Path checkIcon)
+                    {
+                        checkIcon.Visibility = Visibility.Visible;
+                        break;
+                    }
+                }
+            }
+
+            // 更新当前选中的按钮
+            _currentSelectedColorButton = selectedButton;
+        }
+
+        // 设置画笔颜色（已有方法，确保调用时更新UI）
+        private void SetPenColor(string colorName)
+        {
+            System.Windows.Media.Color color;
+            switch (colorName)
+            {
+                case "Black": color = Colors.Black; break;
+                case "Red": color = Colors.Red; break;
+                case "Green": color = Colors.Green; break;
+                case "Blue": color = Colors.Blue; break;
+                case "Yellow": color = Colors.Yellow; break;
+                case "White": color = Colors.White; break;
+                case "Orange": color = Colors.Orange; break;
+                case "Purple": color = Colors.Purple; break;
+                case "Cyan": color = Colors.Cyan; break;
+                case "Magenta": color = Colors.Magenta; break;
+                case "Brown": color = Colors.Brown; break;
+                case "Pink": color = Colors.Pink; break;
+                case "Gray": color = Colors.Gray; break;
+                case "DarkRed": color = Colors.DarkRed; break;
+                case "DarkGreen": color = Colors.DarkGreen; break;
+                case "DarkBlue": color = Colors.DarkBlue; break;
+                case "Gold": color = Colors.Gold; break;
+                case "Silver": color = Colors.Silver; break;
+                case "Lime": color = Colors.Lime; break;
+                case "Teal": color = Colors.Teal; break;
+                default: color = Colors.Black; break;
+            }
+
+            // 更新画笔颜色
+            var brush = new SolidColorBrush(color);
+            Ink.DefaultDrawingAttributes.Color = color;
+
+            // 更新橡皮擦颜色（如果需要）
+            // Ink.EditingMode = InkCanvasEditingMode.Ink;
+        }
+
+        // 初始化选中的颜色（在窗口加载时调用）
+        private void InitializePenColor()
+        {
+            // 找到默认选中的黑色按钮
+            // 注意：这里假设PenSettingsPopup已经加载
+            if (PenSettingsPopup != null && PenSettingsPopup.IsOpen == false)
+            {
+                // 延迟执行，确保Popup已加载
+                Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    var border = PenSettingsPopup.Child as Border;
+                    if (border != null)
+                    {
+                        var stackPanel = border.Child as StackPanel;
+                        if (stackPanel != null)
+                        {
+                            var grid = stackPanel.Children.OfType<Grid>().FirstOrDefault(g => g.RowDefinitions.Count == 4);
+                            if (grid != null)
+                            {
+                                // 查找黑色按钮
+                                foreach (UIElement child in grid.Children)
+                                {
+                                    if (child is Button button && button.Tag?.ToString() == "Black")
+                                    {
+                                        UpdateSelectedCheckIcon(button);
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }), System.Windows.Threading.DispatcherPriority.ApplicationIdle);
+            }
+        }
+
+        // 在窗口加载事件中添加初始化
+        private void Window_Loaded(object sender, RoutedEventArgs e)
+        {
+            InitializePenColor();
+        }
+
+        // 当打开画笔设置弹出窗口时，确保对钩显示正确
+        private void PenBtn_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is System.Windows.Controls.Button button && button.Tag is string colorName)
+            {
+                var color = (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(colorName);
+                _drawingManager.SetPenColor(color);
+                _panZoomManager.ApplyStrokeScaleCompensation();
+                Logger.Debug("MainWindow", $"笔迹颜色设置为: {colorName}");
+            }
+
+            // 确保颜色选择器显示正确的选中状态
+            if (PenSettingsPopup.IsOpen)
+            {
+                InitializePenColor();
+            }
+        }
         private void MoveBtn_Click(object sender, RoutedEventArgs e)
         {
             if (_drawingManager.CurrentMode != DrawingManager.ToolMode.Move)
@@ -2942,20 +3079,7 @@ namespace ShowWrite
                 MoveBtn.IsChecked = true;
         }
 
-        private void PenBtn_Click(object sender, RoutedEventArgs e)
-        {
-            if (_drawingManager.CurrentMode == DrawingManager.ToolMode.Pen)
-            {
-                // 切换画笔设置悬浮窗的显示状态
-                PenSettingsPopup.IsOpen = !PenSettingsPopup.IsOpen;
-                PenBtn.IsChecked = true;
-                Logger.Debug("MainWindow", "切换画笔设置悬浮窗显示状态");
-            }
-            else
-            {
-                SetMode(DrawingManager.ToolMode.Pen);
-            }
-        }
+
 
         private void EraserBtn_Click(object sender, RoutedEventArgs e)
         {
@@ -2987,9 +3111,18 @@ namespace ShowWrite
         {
             if (sender is System.Windows.Controls.Button button && button.Tag is string colorName)
             {
+                // 1. 更新UI选中状态
+                _currentPenColor = colorName;
+                UpdateSelectedCheckIcon(button);
+
+                // 2. 设置画笔颜色
                 var color = (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(colorName);
                 _drawingManager.SetPenColor(color);
+
+                // 3. 应用笔迹缩放补偿
                 _panZoomManager.ApplyStrokeScaleCompensation();
+
+                // 4. 记录日志
                 Logger.Debug("MainWindow", $"笔迹颜色设置为: {colorName}");
             }
         }

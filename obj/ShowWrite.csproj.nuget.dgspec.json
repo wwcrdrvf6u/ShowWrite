@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\vum\\source\\repos\\ShowWrite\\ShowWrite.csproj": {}
+    "C:\\Users\\vum\\Source\\Repos\\ShowWrite\\ShowWrite.csproj": {}
   },
   "projects": {
-    "C:\\Users\\vum\\source\\repos\\ShowWrite\\ShowWrite.csproj": {
+    "C:\\Users\\vum\\Source\\Repos\\ShowWrite\\ShowWrite.csproj": {
       "version": "2.1.5",
       "restore": {
-        "projectUniqueName": "C:\\Users\\vum\\source\\repos\\ShowWrite\\ShowWrite.csproj",
+        "projectUniqueName": "C:\\Users\\vum\\Source\\Repos\\ShowWrite\\ShowWrite.csproj",
         "projectName": "ShowWrite",
-        "projectPath": "C:\\Users\\vum\\source\\repos\\ShowWrite\\ShowWrite.csproj",
+        "projectPath": "C:\\Users\\vum\\Source\\Repos\\ShowWrite\\ShowWrite.csproj",
         "packagesPath": "C:\\Users\\vum\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\vum\\source\\repos\\ShowWrite\\obj\\",
+        "outputPath": "C:\\Users\\vum\\Source\\Repos\\ShowWrite\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"

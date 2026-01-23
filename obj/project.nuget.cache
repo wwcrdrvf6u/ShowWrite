@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "j7UpaAdQlxg=",
+  "dgSpecHash": "TxRySczDj6o=",
   "success": true,
-  "projectFilePath": "C:\\Users\\vum\\source\\repos\\ShowWrite\\ShowWrite.csproj",
+  "projectFilePath": "C:\\Users\\vum\\Source\\Repos\\ShowWrite\\ShowWrite.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\vum\\.nuget\\packages\\aforge\\2.2.5\\aforge.2.2.5.nupkg.sha512",
     "C:\\Users\\vum\\.nuget\\packages\\aforge.imaging\\2.2.5\\aforge.imaging.2.2.5.nupkg.sha512",
@@ -21,9 +21,9 @@
       "code": "NU1701",
       "level": "Warning",
       "message": "Package 'AForge 2.2.5' was restored using '.NETFramework,Version=v4.6.1, .NETFramework,Version=v4.6.2, .NETFramework,Version=v4.7, .NETFramework,Version=v4.7.1, .NETFramework,Version=v4.7.2, .NETFramework,Version=v4.8, .NETFramework,Version=v4.8.1' instead of the project target framework 'net8.0-windows7.0'. This package may not be fully compatible with your project.",
-      "projectPath": "C:\\Users\\vum\\source\\repos\\ShowWrite\\ShowWrite.csproj",
+      "projectPath": "C:\\Users\\vum\\Source\\Repos\\ShowWrite\\ShowWrite.csproj",
       "warningLevel": 1,
-      "filePath": "C:\\Users\\vum\\source\\repos\\ShowWrite\\ShowWrite.csproj",
+      "filePath": "C:\\Users\\vum\\Source\\Repos\\ShowWrite\\ShowWrite.csproj",
       "libraryId": "AForge",
       "targetGraphs": [
         "net8.0-windows7.0"
@@ -33,9 +33,9 @@
       "code": "NU1701",
       "level": "Warning",
       "message": "Package 'AForge.Imaging 2.2.5' was restored using '.NETFramework,Version=v4.6.1, .NETFramework,Version=v4.6.2, .NETFramework,Version=v4.7, .NETFramework,Version=v4.7.1, .NETFramework,Version=v4.7.2, .NETFramework,Version=v4.8, .NETFramework,Version=v4.8.1' instead of the project target framework 'net8.0-windows7.0'. This package may not be fully compatible with your project.",
-      "projectPath": "C:\\Users\\vum\\source\\repos\\ShowWrite\\ShowWrite.csproj",
+      "projectPath": "C:\\Users\\vum\\Source\\Repos\\ShowWrite\\ShowWrite.csproj",
       "warningLevel": 1,
-      "filePath": "C:\\Users\\vum\\source\\repos\\ShowWrite\\ShowWrite.csproj",
+      "filePath": "C:\\Users\\vum\\Source\\Repos\\ShowWrite\\ShowWrite.csproj",
       "libraryId": "AForge.Imaging",
       "targetGraphs": [
         "net8.0-windows7.0"
@@ -45,9 +45,9 @@
       "code": "NU1701",
       "level": "Warning",
       "message": "Package 'AForge.Math 2.2.5' was restored using '.NETFramework,Version=v4.6.1, .NETFramework,Version=v4.6.2, .NETFramework,Version=v4.7, .NETFramework,Version=v4.7.1, .NETFramework,Version=v4.7.2, .NETFramework,Version=v4.8, .NETFramework,Version=v4.8.1' instead of the project target framework 'net8.0-windows7.0'. This package may not be fully compatible with your project.",
-      "projectPath": "C:\\Users\\vum\\source\\repos\\ShowWrite\\ShowWrite.csproj",
+      "projectPath": "C:\\Users\\vum\\Source\\Repos\\ShowWrite\\ShowWrite.csproj",
       "warningLevel": 1,
-      "filePath": "C:\\Users\\vum\\source\\repos\\ShowWrite\\ShowWrite.csproj",
+      "filePath": "C:\\Users\\vum\\Source\\Repos\\ShowWrite\\ShowWrite.csproj",
       "libraryId": "AForge.Math",
       "targetGraphs": [
         "net8.0-windows7.0"
@@ -57,9 +57,9 @@
       "code": "NU1701",
       "level": "Warning",
       "message": "Package 'AForge.Video 2.2.5' was restored using '.NETFramework,Version=v4.6.1, .NETFramework,Version=v4.6.2, .NETFramework,Version=v4.7, .NETFramework,Version=v4.7.1, .NETFramework,Version=v4.7.2, .NETFramework,Version=v4.8, .NETFramework,Version=v4.8.1' instead of the project target framework 'net8.0-windows7.0'. This package may not be fully compatible with your project.",
-      "projectPath": "C:\\Users\\vum\\source\\repos\\ShowWrite\\ShowWrite.csproj",
+      "projectPath": "C:\\Users\\vum\\Source\\Repos\\ShowWrite\\ShowWrite.csproj",
       "warningLevel": 1,
-      "filePath": "C:\\Users\\vum\\source\\repos\\ShowWrite\\ShowWrite.csproj",
+      "filePath": "C:\\Users\\vum\\Source\\Repos\\ShowWrite\\ShowWrite.csproj",
       "libraryId": "AForge.Video",
       "targetGraphs": [
         "net8.0-windows7.0"
@@ -69,9 +69,9 @@
       "code": "NU1701",
       "level": "Warning",
       "message": "Package 'AForge.Video.DirectShow 2.2.5' was restored using '.NETFramework,Version=v4.6.1, .NETFramework,Version=v4.6.2, .NETFramework,Version=v4.7, .NETFramework,Version=v4.7.1, .NETFramework,Version=v4.7.2, .NETFramework,Version=v4.8, .NETFramework,Version=v4.8.1' instead of the project target framework 'net8.0-windows7.0'. This package may not be fully compatible with your project.",
-      "projectPath": "C:\\Users\\vum\\source\\repos\\ShowWrite\\ShowWrite.csproj",
+      "projectPath": "C:\\Users\\vum\\Source\\Repos\\ShowWrite\\ShowWrite.csproj",
       "warningLevel": 1,
-      "filePath": "C:\\Users\\vum\\source\\repos\\ShowWrite\\ShowWrite.csproj",
+      "filePath": "C:\\Users\\vum\\Source\\Repos\\ShowWrite\\ShowWrite.csproj",
       "libraryId": "AForge.Video.DirectShow",
       "targetGraphs": [
         "net8.0-windows7.0"
