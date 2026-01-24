@@ -12,7 +12,7 @@
                 <ResourceDictionary Source="themes/DarkTheme.xaml"/>
             </ResourceDictionary.MergedDictionaries>
 
-            <!-- 画笔设置按钮样式（不随主题变化） -->
+            <!-- 画笔设置按钮样式 -->
             <Style TargetType="Button" x:Key="PenSettingsButtonStyle">
                 <Setter Property="Width" Value="32"/>
                 <Setter Property="Height" Value="32"/>
@@ -20,6 +20,19 @@
                 <Setter Property="BorderThickness" Value="1"/>
                 <Setter Property="BorderBrush" Value="#555"/>
                 <Setter Property="Padding" Value="0"/>
+                <Setter Property="Background" Value="Transparent"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Button">
+                            <Border Background="{TemplateBinding Background}"
+                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                    CornerRadius="2">
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
             </Style>
 
             <!-- 对钩图标几何数据 -->
@@ -33,13 +46,28 @@
                 <Setter Property="Height" Value="20"/>
                 <Setter Property="HorizontalAlignment" Value="Center"/>
                 <Setter Property="VerticalAlignment" Value="Center"/>
-                <Setter Property="Fill" Value="White"/>
+                <Setter Property="Fill" Value="#FFFFFF"/>
                 <Setter Property="Visibility" Value="Collapsed"/>
             </Style>
 
             <!-- 颜色按钮容器样式 -->
             <Style x:Key="ColorButtonContainerStyle" TargetType="Grid">
-                <Setter Property="Background" Value="Transparent"/>
+                <Setter Property="Width" Value="24"/>
+                <Setter Property="Height" Value="24"/>
+                <Setter Property="HorizontalAlignment" Value="Center"/>
+                <Setter Property="VerticalAlignment" Value="Center"/>
+            </Style>
+
+            <!-- 颜色方块样式 -->
+            <Style x:Key="ColorRectangleStyle" TargetType="Rectangle">
+                <Setter Property="Width" Value="24"/>
+                <Setter Property="Height" Value="24"/>
+                <Setter Property="HorizontalAlignment" Value="Center"/>
+                <Setter Property="VerticalAlignment" Value="Center"/>
+                <Setter Property="RadiusX" Value="2"/>
+                <Setter Property="RadiusY" Value="2"/>
+                <Setter Property="Stroke" Value="#666"/>
+                <Setter Property="StrokeThickness" Value="1"/>
             </Style>
         </ResourceDictionary>
     </Window.Resources>
@@ -275,7 +303,7 @@
 
         <!-- 画笔设置悬浮窗 -->
         <Popup x:Name="PenSettingsPopup" PlacementTarget="{Binding ElementName=PenBtn}" Placement="Top" StaysOpen="False"
-               AllowsTransparency="True" PopupAnimation="Fade">
+               AllowsTransparency="True" PopupAnimation="Fade" Opened="PenSettingsPopup_Opened">
             <Border Width="240" Background="{DynamicResource PopupBackground}" CornerRadius="6" BorderBrush="{DynamicResource PopupBorder}" BorderThickness="1"
                     Padding="10">
                 <StackPanel>
@@ -311,148 +339,148 @@
 
                         <!-- 第一行颜色 -->
                         <Button Grid.Row="0" Grid.Column="0" Style="{StaticResource PenSettingsButtonStyle}" 
-                                Click="ColorButton_Click" Tag="Black">
+                                Click="ColorButton_Click" Tag="Black" ToolTip="黑色">
                             <Grid Style="{StaticResource ColorButtonContainerStyle}">
-                                <Rectangle Fill="Black"/>
+                                <Rectangle Style="{StaticResource ColorRectangleStyle}" Fill="Black"/>
                                 <Path x:Name="CheckIcon_Black" Style="{StaticResource CheckIconStyle}"/>
                             </Grid>
                         </Button>
                         <Button Grid.Row="0" Grid.Column="1" Style="{StaticResource PenSettingsButtonStyle}" 
-                                Click="ColorButton_Click" Tag="Red">
+                                Click="ColorButton_Click" Tag="Red" ToolTip="红色">
                             <Grid Style="{StaticResource ColorButtonContainerStyle}">
-                                <Rectangle Fill="Red"/>
+                                <Rectangle Style="{StaticResource ColorRectangleStyle}" Fill="Red"/>
                                 <Path x:Name="CheckIcon_Red" Style="{StaticResource CheckIconStyle}"/>
                             </Grid>
                         </Button>
                         <Button Grid.Row="0" Grid.Column="2" Style="{StaticResource PenSettingsButtonStyle}" 
-                                Click="ColorButton_Click" Tag="Green">
+                                Click="ColorButton_Click" Tag="Green" ToolTip="绿色">
                             <Grid Style="{StaticResource ColorButtonContainerStyle}">
-                                <Rectangle Fill="Green"/>
+                                <Rectangle Style="{StaticResource ColorRectangleStyle}" Fill="Green"/>
                                 <Path x:Name="CheckIcon_Green" Style="{StaticResource CheckIconStyle}"/>
                             </Grid>
                         </Button>
                         <Button Grid.Row="0" Grid.Column="3" Style="{StaticResource PenSettingsButtonStyle}" 
-                                Click="ColorButton_Click" Tag="Blue">
+                                Click="ColorButton_Click" Tag="Blue" ToolTip="蓝色">
                             <Grid Style="{StaticResource ColorButtonContainerStyle}">
-                                <Rectangle Fill="Blue"/>
+                                <Rectangle Style="{StaticResource ColorRectangleStyle}" Fill="Blue"/>
                                 <Path x:Name="CheckIcon_Blue" Style="{StaticResource CheckIconStyle}"/>
                             </Grid>
                         </Button>
                         <Button Grid.Row="0" Grid.Column="4" Style="{StaticResource PenSettingsButtonStyle}" 
-                                Click="ColorButton_Click" Tag="Yellow">
+                                Click="ColorButton_Click" Tag="Yellow" ToolTip="黄色">
                             <Grid Style="{StaticResource ColorButtonContainerStyle}">
-                                <Rectangle Fill="Yellow"/>
+                                <Rectangle Style="{StaticResource ColorRectangleStyle}" Fill="Yellow"/>
                                 <Path x:Name="CheckIcon_Yellow" Style="{StaticResource CheckIconStyle}"/>
                             </Grid>
                         </Button>
 
                         <!-- 第二行颜色 -->
                         <Button Grid.Row="1" Grid.Column="0" Style="{StaticResource PenSettingsButtonStyle}" 
-                                Click="ColorButton_Click" Tag="White">
+                                Click="ColorButton_Click" Tag="White" ToolTip="白色">
                             <Grid Style="{StaticResource ColorButtonContainerStyle}">
-                                <Rectangle Fill="White"/>
+                                <Rectangle Style="{StaticResource ColorRectangleStyle}" Fill="White"/>
                                 <Path x:Name="CheckIcon_White" Style="{StaticResource CheckIconStyle}"/>
                             </Grid>
                         </Button>
                         <Button Grid.Row="1" Grid.Column="1" Style="{StaticResource PenSettingsButtonStyle}" 
-                                Click="ColorButton_Click" Tag="Orange">
+                                Click="ColorButton_Click" Tag="Orange" ToolTip="橙色">
                             <Grid Style="{StaticResource ColorButtonContainerStyle}">
-                                <Rectangle Fill="Orange"/>
+                                <Rectangle Style="{StaticResource ColorRectangleStyle}" Fill="Orange"/>
                                 <Path x:Name="CheckIcon_Orange" Style="{StaticResource CheckIconStyle}"/>
                             </Grid>
                         </Button>
                         <Button Grid.Row="1" Grid.Column="2" Style="{StaticResource PenSettingsButtonStyle}" 
-                                Click="ColorButton_Click" Tag="Purple">
+                                Click="ColorButton_Click" Tag="Purple" ToolTip="紫色">
                             <Grid Style="{StaticResource ColorButtonContainerStyle}">
-                                <Rectangle Fill="Purple"/>
+                                <Rectangle Style="{StaticResource ColorRectangleStyle}" Fill="Purple"/>
                                 <Path x:Name="CheckIcon_Purple" Style="{StaticResource CheckIconStyle}"/>
                             </Grid>
                         </Button>
                         <Button Grid.Row="1" Grid.Column="3" Style="{StaticResource PenSettingsButtonStyle}" 
-                                Click="ColorButton_Click" Tag="Cyan">
+                                Click="ColorButton_Click" Tag="Cyan" ToolTip="青色">
                             <Grid Style="{StaticResource ColorButtonContainerStyle}">
-                                <Rectangle Fill="Cyan"/>
+                                <Rectangle Style="{StaticResource ColorRectangleStyle}" Fill="Cyan"/>
                                 <Path x:Name="CheckIcon_Cyan" Style="{StaticResource CheckIconStyle}"/>
                             </Grid>
                         </Button>
                         <Button Grid.Row="1" Grid.Column="4" Style="{StaticResource PenSettingsButtonStyle}" 
-                                Click="ColorButton_Click" Tag="Magenta">
+                                Click="ColorButton_Click" Tag="Magenta" ToolTip="洋红色">
                             <Grid Style="{StaticResource ColorButtonContainerStyle}">
-                                <Rectangle Fill="Magenta"/>
+                                <Rectangle Style="{StaticResource ColorRectangleStyle}" Fill="Magenta"/>
                                 <Path x:Name="CheckIcon_Magenta" Style="{StaticResource CheckIconStyle}"/>
                             </Grid>
                         </Button>
 
                         <!-- 第三行颜色 -->
                         <Button Grid.Row="2" Grid.Column="0" Style="{StaticResource PenSettingsButtonStyle}" 
-                                Click="ColorButton_Click" Tag="Brown">
+                                Click="ColorButton_Click" Tag="Brown" ToolTip="棕色">
                             <Grid Style="{StaticResource ColorButtonContainerStyle}">
-                                <Rectangle Fill="Brown"/>
+                                <Rectangle Style="{StaticResource ColorRectangleStyle}" Fill="Brown"/>
                                 <Path x:Name="CheckIcon_Brown" Style="{StaticResource CheckIconStyle}"/>
                             </Grid>
                         </Button>
                         <Button Grid.Row="2" Grid.Column="1" Style="{StaticResource PenSettingsButtonStyle}" 
-                                Click="ColorButton_Click" Tag="Pink">
+                                Click="ColorButton_Click" Tag="Pink" ToolTip="粉色">
                             <Grid Style="{StaticResource ColorButtonContainerStyle}">
-                                <Rectangle Fill="Pink"/>
+                                <Rectangle Style="{StaticResource ColorRectangleStyle}" Fill="Pink"/>
                                 <Path x:Name="CheckIcon_Pink" Style="{StaticResource CheckIconStyle}"/>
                             </Grid>
                         </Button>
                         <Button Grid.Row="2" Grid.Column="2" Style="{StaticResource PenSettingsButtonStyle}" 
-                                Click="ColorButton_Click" Tag="Gray">
+                                Click="ColorButton_Click" Tag="Gray" ToolTip="灰色">
                             <Grid Style="{StaticResource ColorButtonContainerStyle}">
-                                <Rectangle Fill="Gray"/>
+                                <Rectangle Style="{StaticResource ColorRectangleStyle}" Fill="Gray"/>
                                 <Path x:Name="CheckIcon_Gray" Style="{StaticResource CheckIconStyle}"/>
                             </Grid>
                         </Button>
                         <Button Grid.Row="2" Grid.Column="3" Style="{StaticResource PenSettingsButtonStyle}" 
-                                Click="ColorButton_Click" Tag="DarkRed">
+                                Click="ColorButton_Click" Tag="DarkRed" ToolTip="深红色">
                             <Grid Style="{StaticResource ColorButtonContainerStyle}">
-                                <Rectangle Fill="DarkRed"/>
+                                <Rectangle Style="{StaticResource ColorRectangleStyle}" Fill="DarkRed"/>
                                 <Path x:Name="CheckIcon_DarkRed" Style="{StaticResource CheckIconStyle}"/>
                             </Grid>
                         </Button>
                         <Button Grid.Row="2" Grid.Column="4" Style="{StaticResource PenSettingsButtonStyle}" 
-                                Click="ColorButton_Click" Tag="DarkGreen">
+                                Click="ColorButton_Click" Tag="DarkGreen" ToolTip="深绿色">
                             <Grid Style="{StaticResource ColorButtonContainerStyle}">
-                                <Rectangle Fill="DarkGreen"/>
+                                <Rectangle Style="{StaticResource ColorRectangleStyle}" Fill="DarkGreen"/>
                                 <Path x:Name="CheckIcon_DarkGreen" Style="{StaticResource CheckIconStyle}"/>
                             </Grid>
                         </Button>
 
                         <!-- 第四行颜色 -->
                         <Button Grid.Row="3" Grid.Column="0" Style="{StaticResource PenSettingsButtonStyle}" 
-                                Click="ColorButton_Click" Tag="DarkBlue">
+                                Click="ColorButton_Click" Tag="DarkBlue" ToolTip="深蓝色">
                             <Grid Style="{StaticResource ColorButtonContainerStyle}">
-                                <Rectangle Fill="DarkBlue"/>
+                                <Rectangle Style="{StaticResource ColorRectangleStyle}" Fill="DarkBlue"/>
                                 <Path x:Name="CheckIcon_DarkBlue" Style="{StaticResource CheckIconStyle}"/>
                             </Grid>
                         </Button>
                         <Button Grid.Row="3" Grid.Column="1" Style="{StaticResource PenSettingsButtonStyle}" 
-                                Click="ColorButton_Click" Tag="Gold">
+                                Click="ColorButton_Click" Tag="Gold" ToolTip="金色">
                             <Grid Style="{StaticResource ColorButtonContainerStyle}">
-                                <Rectangle Fill="Gold"/>
+                                <Rectangle Style="{StaticResource ColorRectangleStyle}" Fill="Gold"/>
                                 <Path x:Name="CheckIcon_Gold" Style="{StaticResource CheckIconStyle}"/>
                             </Grid>
                         </Button>
                         <Button Grid.Row="3" Grid.Column="2" Style="{StaticResource PenSettingsButtonStyle}" 
-                                Click="ColorButton_Click" Tag="Silver">
+                                Click="ColorButton_Click" Tag="Silver" ToolTip="银色">
                             <Grid Style="{StaticResource ColorButtonContainerStyle}">
-                                <Rectangle Fill="Silver"/>
+                                <Rectangle Style="{StaticResource ColorRectangleStyle}" Fill="Silver"/>
                                 <Path x:Name="CheckIcon_Silver" Style="{StaticResource CheckIconStyle}"/>
                             </Grid>
                         </Button>
                         <Button Grid.Row="3" Grid.Column="3" Style="{StaticResource PenSettingsButtonStyle}" 
-                                Click="ColorButton_Click" Tag="Lime">
+                                Click="ColorButton_Click" Tag="Lime" ToolTip="柠檬色">
                             <Grid Style="{StaticResource ColorButtonContainerStyle}">
-                                <Rectangle Fill="Lime"/>
+                                <Rectangle Style="{StaticResource ColorRectangleStyle}" Fill="Lime"/>
                                 <Path x:Name="CheckIcon_Lime" Style="{StaticResource CheckIconStyle}"/>
                             </Grid>
                         </Button>
                         <Button Grid.Row="3" Grid.Column="4" Style="{StaticResource PenSettingsButtonStyle}" 
-                                Click="ColorButton_Click" Tag="Teal">
+                                Click="ColorButton_Click" Tag="Teal" ToolTip="蓝绿色">
                             <Grid Style="{StaticResource ColorButtonContainerStyle}">
-                                <Rectangle Fill="Teal"/>
+                                <Rectangle Style="{StaticResource ColorRectangleStyle}" Fill="Teal"/>
                                 <Path x:Name="CheckIcon_Teal" Style="{StaticResource CheckIconStyle}"/>
                             </Grid>
                         </Button>

@@ -255,12 +255,6 @@ namespace ShowWrite
             this.Topmost = true;
             this.Topmost = false;
             this.Focus();
-
-            // 初始化默认模式为移动模式
-            SetMode(DrawingManager.ToolMode.Move, true);
-
-            // 初始化画笔颜色
-            InitializePenColor();
         }
 
         private void SwitchTheme(bool useDarkTheme)
@@ -452,7 +446,10 @@ namespace ShowWrite
                 // 初始化UI组件
                 InitializePenSettingsPopup();
                 InitializeTouchInfoPopup();
-                InitializePhotoPopup(); // 新增
+                InitializePhotoPopup();
+
+                // 初始化画笔颜色选择器
+                InitializePenColorSelector();
 
                 // 开始触控跟踪
                 _touchManager.StartTracking();
@@ -1755,6 +1752,259 @@ namespace ShowWrite
 
         #endregion
 
+        #region 颜色选择器相关方法
+
+        /// <summary>
+        /// 选择指定的颜色按钮
+        /// </summary>
+        private void SelectColorButton(string colorName)
+        {
+            try
+            {
+                // 隐藏所有对钩
+                HideAllCheckIcons();
+
+                // 根据颜色名称找到对应的按钮并显示对钩
+                switch (colorName)
+                {
+                    case "Black":
+                        if (CheckIcon_Black != null) CheckIcon_Black.Visibility = Visibility.Visible;
+                        _currentSelectedColorButton = GetColorButtonByTag("Black");
+                        break;
+                    case "Red":
+                        if (CheckIcon_Red != null) CheckIcon_Red.Visibility = Visibility.Visible;
+                        _currentSelectedColorButton = GetColorButtonByTag("Red");
+                        break;
+                    case "Green":
+                        if (CheckIcon_Green != null) CheckIcon_Green.Visibility = Visibility.Visible;
+                        _currentSelectedColorButton = GetColorButtonByTag("Green");
+                        break;
+                    case "Blue":
+                        if (CheckIcon_Blue != null) CheckIcon_Blue.Visibility = Visibility.Visible;
+                        _currentSelectedColorButton = GetColorButtonByTag("Blue");
+                        break;
+                    case "Yellow":
+                        if (CheckIcon_Yellow != null) CheckIcon_Yellow.Visibility = Visibility.Visible;
+                        _currentSelectedColorButton = GetColorButtonByTag("Yellow");
+                        break;
+                    case "White":
+                        if (CheckIcon_White != null) CheckIcon_White.Visibility = Visibility.Visible;
+                        _currentSelectedColorButton = GetColorButtonByTag("White");
+                        break;
+                    case "Orange":
+                        if (CheckIcon_Orange != null) CheckIcon_Orange.Visibility = Visibility.Visible;
+                        _currentSelectedColorButton = GetColorButtonByTag("Orange");
+                        break;
+                    case "Purple":
+                        if (CheckIcon_Purple != null) CheckIcon_Purple.Visibility = Visibility.Visible;
+                        _currentSelectedColorButton = GetColorButtonByTag("Purple");
+                        break;
+                    case "Cyan":
+                        if (CheckIcon_Cyan != null) CheckIcon_Cyan.Visibility = Visibility.Visible;
+                        _currentSelectedColorButton = GetColorButtonByTag("Cyan");
+                        break;
+                    case "Magenta":
+                        if (CheckIcon_Magenta != null) CheckIcon_Magenta.Visibility = Visibility.Visible;
+                        _currentSelectedColorButton = GetColorButtonByTag("Magenta");
+                        break;
+                    case "Brown":
+                        if (CheckIcon_Brown != null) CheckIcon_Brown.Visibility = Visibility.Visible;
+                        _currentSelectedColorButton = GetColorButtonByTag("Brown");
+                        break;
+                    case "Pink":
+                        if (CheckIcon_Pink != null) CheckIcon_Pink.Visibility = Visibility.Visible;
+                        _currentSelectedColorButton = GetColorButtonByTag("Pink");
+                        break;
+                    case "Gray":
+                        if (CheckIcon_Gray != null) CheckIcon_Gray.Visibility = Visibility.Visible;
+                        _currentSelectedColorButton = GetColorButtonByTag("Gray");
+                        break;
+                    case "DarkRed":
+                        if (CheckIcon_DarkRed != null) CheckIcon_DarkRed.Visibility = Visibility.Visible;
+                        _currentSelectedColorButton = GetColorButtonByTag("DarkRed");
+                        break;
+                    case "DarkGreen":
+                        if (CheckIcon_DarkGreen != null) CheckIcon_DarkGreen.Visibility = Visibility.Visible;
+                        _currentSelectedColorButton = GetColorButtonByTag("DarkGreen");
+                        break;
+                    case "DarkBlue":
+                        if (CheckIcon_DarkBlue != null) CheckIcon_DarkBlue.Visibility = Visibility.Visible;
+                        _currentSelectedColorButton = GetColorButtonByTag("DarkBlue");
+                        break;
+                    case "Gold":
+                        if (CheckIcon_Gold != null) CheckIcon_Gold.Visibility = Visibility.Visible;
+                        _currentSelectedColorButton = GetColorButtonByTag("Gold");
+                        break;
+                    case "Silver":
+                        if (CheckIcon_Silver != null) CheckIcon_Silver.Visibility = Visibility.Visible;
+                        _currentSelectedColorButton = GetColorButtonByTag("Silver");
+                        break;
+                    case "Lime":
+                        if (CheckIcon_Lime != null) CheckIcon_Lime.Visibility = Visibility.Visible;
+                        _currentSelectedColorButton = GetColorButtonByTag("Lime");
+                        break;
+                    case "Teal":
+                        if (CheckIcon_Teal != null) CheckIcon_Teal.Visibility = Visibility.Visible;
+                        _currentSelectedColorButton = GetColorButtonByTag("Teal");
+                        break;
+                    default:
+                        if (CheckIcon_Black != null) CheckIcon_Black.Visibility = Visibility.Visible;
+                        _currentSelectedColorButton = GetColorButtonByTag("Black");
+                        break;
+                }
+
+                // 更新当前画笔颜色
+                _currentPenColor = colorName;
+            }
+            catch (Exception ex)
+            {
+                Logger.Error("MainWindow", $"选择颜色按钮失败: {ex.Message}", ex);
+            }
+        }
+
+        /// <summary>
+        /// 隐藏所有对钩图标
+        /// </summary>
+        private void HideAllCheckIcons()
+        {
+            if (CheckIcon_Black != null) CheckIcon_Black.Visibility = Visibility.Collapsed;
+            if (CheckIcon_Red != null) CheckIcon_Red.Visibility = Visibility.Collapsed;
+            if (CheckIcon_Green != null) CheckIcon_Green.Visibility = Visibility.Collapsed;
+            if (CheckIcon_Blue != null) CheckIcon_Blue.Visibility = Visibility.Collapsed;
+            if (CheckIcon_Yellow != null) CheckIcon_Yellow.Visibility = Visibility.Collapsed;
+            if (CheckIcon_White != null) CheckIcon_White.Visibility = Visibility.Collapsed;
+            if (CheckIcon_Orange != null) CheckIcon_Orange.Visibility = Visibility.Collapsed;
+            if (CheckIcon_Purple != null) CheckIcon_Purple.Visibility = Visibility.Collapsed;
+            if (CheckIcon_Cyan != null) CheckIcon_Cyan.Visibility = Visibility.Collapsed;
+            if (CheckIcon_Magenta != null) CheckIcon_Magenta.Visibility = Visibility.Collapsed;
+            if (CheckIcon_Brown != null) CheckIcon_Brown.Visibility = Visibility.Collapsed;
+            if (CheckIcon_Pink != null) CheckIcon_Pink.Visibility = Visibility.Collapsed;
+            if (CheckIcon_Gray != null) CheckIcon_Gray.Visibility = Visibility.Collapsed;
+            if (CheckIcon_DarkRed != null) CheckIcon_DarkRed.Visibility = Visibility.Collapsed;
+            if (CheckIcon_DarkGreen != null) CheckIcon_DarkGreen.Visibility = Visibility.Collapsed;
+            if (CheckIcon_DarkBlue != null) CheckIcon_DarkBlue.Visibility = Visibility.Collapsed;
+            if (CheckIcon_Gold != null) CheckIcon_Gold.Visibility = Visibility.Collapsed;
+            if (CheckIcon_Silver != null) CheckIcon_Silver.Visibility = Visibility.Collapsed;
+            if (CheckIcon_Lime != null) CheckIcon_Lime.Visibility = Visibility.Collapsed;
+            if (CheckIcon_Teal != null) CheckIcon_Teal.Visibility = Visibility.Collapsed;
+        }
+
+        /// <summary>
+        /// 根据Tag获取颜色按钮
+        /// </summary>
+        private Button GetColorButtonByTag(string tag)
+        {
+            if (PenSettingsPopup == null || PenSettingsPopup.Child == null) return null;
+
+            var border = PenSettingsPopup.Child as Border;
+            if (border == null) return null;
+
+            var stackPanel = border.Child as StackPanel;
+            if (stackPanel == null) return null;
+
+            var grid = stackPanel.Children.OfType<Grid>().FirstOrDefault();
+            if (grid == null) return null;
+
+            // 在Grid中查找具有指定Tag的按钮
+            foreach (UIElement child in grid.Children)
+            {
+                if (child is Button button && button.Tag?.ToString() == tag)
+                {
+                    return button;
+                }
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// 根据颜色名称获取颜色
+        /// </summary>
+        private System.Windows.Media.Color GetColorFromName(string colorName)
+        {
+            switch (colorName)
+            {
+                case "Black": return Colors.Black;
+                case "Red": return Colors.Red;
+                case "Green": return Colors.Green;
+                case "Blue": return Colors.Blue;
+                case "Yellow": return Colors.Yellow;
+                case "White": return Colors.White;
+                case "Orange": return Colors.Orange;
+                case "Purple": return Colors.Purple;
+                case "Cyan": return Colors.Cyan;
+                case "Magenta": return Colors.Magenta;
+                case "Brown": return Colors.Brown;
+                case "Pink": return Colors.Pink;
+                case "Gray": return Colors.Gray;
+                case "DarkRed": return Colors.DarkRed;
+                case "DarkGreen": return Colors.DarkGreen;
+                case "DarkBlue": return Colors.DarkBlue;
+                case "Gold": return Colors.Gold;
+                case "Silver": return Colors.Silver;
+                case "Lime": return Colors.Lime;
+                case "Teal": return Colors.Teal;
+                default: return Colors.Black;
+            }
+        }
+
+        /// <summary>
+        /// 初始化画笔颜色选择器
+        /// </summary>
+        private void InitializePenColorSelector()
+        {
+            try
+            {
+                // 默认选中黑色
+                SelectColorButton("Black");
+                _currentPenColor = "Black";
+
+                // 设置默认画笔颜色
+                _drawingManager.SetPenColor(GetColorFromName("Black"));
+
+                Logger.Debug("MainWindow", "画笔颜色选择器初始化完成");
+            }
+            catch (Exception ex)
+            {
+                Logger.Error("MainWindow", $"初始化画笔颜色选择器失败: {ex.Message}", ex);
+            }
+        }
+
+        #endregion
+
+        #region 悬浮窗事件处理
+
+        /// <summary>
+        /// 画笔设置悬浮窗打开事件
+        /// </summary>
+        private void PenSettingsPopup_Opened(object sender, EventArgs e)
+        {
+            try
+            {
+                // 更新颜色选择器的选中状态
+                if (!string.IsNullOrEmpty(_currentPenColor))
+                {
+                    SelectColorButton(_currentPenColor);
+                }
+
+                Logger.Debug("MainWindow", "画笔设置悬浮窗已打开");
+            }
+            catch (Exception ex)
+            {
+                Logger.Error("MainWindow", $"画笔设置悬浮窗打开事件失败: {ex.Message}", ex);
+            }
+        }
+
+        /// <summary>
+        /// 更多菜单弹出窗口关闭事件
+        /// </summary>
+        private void MoreMenuPopup_Closed(object sender, EventArgs e)
+        {
+            Logger.Debug("MainWindow", "更多菜单弹出窗口已关闭");
+        }
+
+        #endregion
+
         #region 其他事件处理方法
 
         /// <summary>
@@ -1937,14 +2187,6 @@ namespace ShowWrite
         {
             TouchInfoPopup.IsOpen = false;
             Logger.Debug("MainWindow", "关闭触控信息悬浮窗");
-        }
-
-        /// <summary>
-        /// 更多菜单弹出窗口关闭事件
-        /// </summary>
-        private void MoreMenuPopup_Closed(object sender, EventArgs e)
-        {
-            Logger.Debug("MainWindow", "更多菜单弹出窗口已关闭");
         }
 
         /// <summary>
@@ -2942,168 +3184,63 @@ namespace ShowWrite
             }
         }
 
-        /// <summary>
-        /// 更新选中的对钩图标
-        /// </summary>
-        private void UpdateSelectedCheckIcon(Button selectedButton)
+        private void MoveBtn_Click(object sender, RoutedEventArgs e)
         {
-            // 隐藏之前选中的按钮的对钩
-            if (_currentSelectedColorButton != null)
+            // 如果当前不是移动模式，切换到移动模式
+            if (_drawingManager.CurrentMode != DrawingManager.ToolMode.Move)
             {
-                var grid = _currentSelectedColorButton.Content as Grid;
-                if (grid != null)
-                {
-                    foreach (var child in grid.Children)
-                    {
-                        if (child is System.Windows.Shapes.Path checkIcon)
-                        {
-                            checkIcon.Visibility = Visibility.Collapsed;
-                            break;
-                        }
-                    }
-                }
+                SetMode(DrawingManager.ToolMode.Move);
+
+                // 关闭画笔设置悬浮窗
+                PenSettingsPopup.IsOpen = false;
             }
-
-            // 显示当前选中的按钮的对钩
-            var selectedGrid = selectedButton.Content as Grid;
-            if (selectedGrid != null)
+            else
             {
-                foreach (var child in selectedGrid.Children)
-                {
-                    if (child is System.Windows.Shapes.Path checkIcon)
-                    {
-                        checkIcon.Visibility = Visibility.Visible;
-                        break;
-                    }
-                }
-            }
-
-            // 更新当前选中的按钮
-            _currentSelectedColorButton = selectedButton;
-        }
-
-        /// <summary>
-        /// 设置画笔颜色
-        /// </summary>
-        private void SetPenColor(string colorName)
-        {
-            System.Windows.Media.Color color;
-            switch (colorName)
-            {
-                case "Black": color = Colors.Black; break;
-                case "Red": color = Colors.Red; break;
-                case "Green": color = Colors.Green; break;
-                case "Blue": color = Colors.Blue; break;
-                case "Yellow": color = Colors.Yellow; break;
-                case "White": color = Colors.White; break;
-                case "Orange": color = Colors.Orange; break;
-                case "Purple": color = Colors.Purple; break;
-                case "Cyan": color = Colors.Cyan; break;
-                case "Magenta": color = Colors.Magenta; break;
-                case "Brown": color = Colors.Brown; break;
-                case "Pink": color = Colors.Pink; break;
-                case "Gray": color = Colors.Gray; break;
-                case "DarkRed": color = Colors.DarkRed; break;
-                case "DarkGreen": color = Colors.DarkGreen; break;
-                case "DarkBlue": color = Colors.DarkBlue; break;
-                case "Gold": color = Colors.Gold; break;
-                case "Silver": color = Colors.Silver; break;
-                case "Lime": color = Colors.Lime; break;
-                case "Teal": color = Colors.Teal; break;
-                default: color = Colors.Black; break;
-            }
-
-            // 更新画笔颜色
-            var brush = new SolidColorBrush(color);
-            Ink.DefaultDrawingAttributes.Color = color;
-            _drawingManager.SetPenColor(color);
-
-            // 记录日志
-            Logger.Debug("MainWindow", $"画笔颜色设置为: {colorName}");
-        }
-
-        /// <summary>
-        /// 初始化画笔颜色
-        /// </summary>
-        private void InitializePenColor()
-        {
-            // 设置默认颜色为黑色
-            SetPenColor("Black");
-
-            // 找到黑色按钮并更新选中状态
-            if (PenSettingsPopup != null)
-            {
-                Dispatcher.BeginInvoke(new Action(() =>
-                {
-                    var border = PenSettingsPopup.Child as Border;
-                    if (border != null)
-                    {
-                        var stackPanel = border.Child as StackPanel;
-                        if (stackPanel != null)
-                        {
-                            var grid = stackPanel.Children.OfType<Grid>().FirstOrDefault(g => g.RowDefinitions.Count == 4);
-                            if (grid != null)
-                            {
-                                // 查找黑色按钮
-                                foreach (UIElement child in grid.Children)
-                                {
-                                    if (child is Button button && button.Tag?.ToString() == "Black")
-                                    {
-                                        UpdateSelectedCheckIcon(button);
-                                        break;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }), System.Windows.Threading.DispatcherPriority.ApplicationIdle);
+                // 如果已经是移动模式，保持选中状态（不取消）
+                MoveBtn.IsChecked = true;
             }
         }
 
-        /// <summary>
-        /// 画笔按钮点击事件
-        /// </summary>
         private void PenBtn_Click(object sender, RoutedEventArgs e)
         {
-            Logger.Debug("MainWindow", "PenBtn_Click 被调用");
-            Logger.Debug("MainWindow", $"当前模式: {_drawingManager.CurrentMode}");
-
-            // 切换到画笔模式
+            // 如果当前不是画笔模式，切换到画笔模式
             if (_drawingManager.CurrentMode != DrawingManager.ToolMode.Pen)
             {
                 SetMode(DrawingManager.ToolMode.Pen);
+
+                // 打开画笔设置悬浮窗
+                PenSettingsPopup.IsOpen = true;
             }
-
-            // 打开画笔设置悬浮窗
-            PenSettingsPopup.IsOpen = true;
-
-            // 确保颜色选择器显示正确的选中状态
-            InitializePenColor();
-
-            Logger.Debug("MainWindow", "切换到画笔模式并打开画笔设置");
-        }
-
-        private void MoveBtn_Click(object sender, RoutedEventArgs e)
-        {
-            if (_drawingManager.CurrentMode != DrawingManager.ToolMode.Move)
-                SetMode(DrawingManager.ToolMode.Move);
             else
-                MoveBtn.IsChecked = true;
+            {
+                // 如果已经是画笔模式，保持选中状态（不取消）
+                PenBtn.IsChecked = true;
+
+                // 切换画笔设置悬浮窗的显示/隐藏
+                PenSettingsPopup.IsOpen = !PenSettingsPopup.IsOpen;
+            }
         }
 
         private void EraserBtn_Click(object sender, RoutedEventArgs e)
         {
-            if (_drawingManager.CurrentMode == DrawingManager.ToolMode.Eraser)
+            // 如果当前不是橡皮擦模式，切换到橡皮擦模式
+            if (_drawingManager.CurrentMode != DrawingManager.ToolMode.Eraser)
             {
+                SetMode(DrawingManager.ToolMode.Eraser);
+
+                // 关闭画笔设置悬浮窗
+                PenSettingsPopup.IsOpen = false;
+            }
+            else
+            {
+                // 如果已经是橡皮擦模式，保持选中状态（不取消）
+                EraserBtn.IsChecked = true;
+
+                // 如果需要清屏功能，可以在这里添加确认对话框
                 if (MessageBox.Show("确定要清除所有笔迹吗？", "清屏确认", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
                 {
                     ClearInk_Click(sender, e);
                 }
-                EraserBtn.IsChecked = true;
-            }
-            else
-            {
-                SetMode(DrawingManager.ToolMode.Eraser);
             }
         }
 
@@ -3117,26 +3254,29 @@ namespace ShowWrite
             }
         }
 
-        /// <summary>
-        /// 颜色按钮点击事件
-        /// </summary>
         private void ColorButton_Click(object sender, RoutedEventArgs e)
         {
-            if (sender is System.Windows.Controls.Button button && button.Tag is string colorName)
+            if (sender is Button button && button.Tag is string colorName)
             {
-                // 1. 更新UI选中状态
-                _currentPenColor = colorName;
-                UpdateSelectedCheckIcon(button);
+                try
+                {
+                    // 1. 更新UI选中状态
+                    SelectColorButton(colorName);
 
-                // 2. 设置画笔颜色
-                var color = (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(colorName);
-                _drawingManager.SetPenColor(color);
+                    // 2. 设置画笔颜色
+                    var color = GetColorFromName(colorName);
+                    _drawingManager.SetPenColor(color);
 
-                // 3. 应用笔迹缩放补偿
-                _panZoomManager.ApplyStrokeScaleCompensation();
+                    // 3. 应用笔迹缩放补偿
+                    _panZoomManager.ApplyStrokeScaleCompensation();
 
-                // 4. 记录日志
-                Logger.Debug("MainWindow", $"笔迹颜色设置为: {colorName}");
+                    // 4. 记录日志
+                    Logger.Debug("MainWindow", $"画笔颜色设置为: {colorName}");
+                }
+                catch (Exception ex)
+                {
+                    Logger.Error("MainWindow", $"设置画笔颜色失败: {ex.Message}", ex);
+                }
             }
         }
 
