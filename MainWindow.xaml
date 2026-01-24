@@ -597,7 +597,7 @@
               Background="#CC2B2B2B"
               Visibility="Collapsed">
             <!-- 添加一个背景层来确保视频内容可见 -->
-            <Grid Background="#CC000000">
+            <Grid Background="#33000000">
                 <!-- 校正点容器 -->
                 <Canvas x:Name="CorrectionCanvas" 
                         Background="Transparent"

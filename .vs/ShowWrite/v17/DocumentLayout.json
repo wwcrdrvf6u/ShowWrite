@@ -3,12 +3,12 @@
   "WorkspaceRootPath": "C:\\Users\\vum\\source\\repos\\ShowWrite\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{1FEBD063-10B8-47FD-A2A6-B3F3270EB83C}|ShowWrite.csproj|c:\\users\\vum\\source\\repos\\showwrite\\mainwindow.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{1FEBD063-10B8-47FD-A2A6-B3F3270EB83C}|ShowWrite.csproj|solutionrelative:mainwindow.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
       "AbsoluteMoniker": "D:0:0:{1FEBD063-10B8-47FD-A2A6-B3F3270EB83C}|ShowWrite.csproj|c:\\users\\vum\\source\\repos\\showwrite\\mainwindow.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}",
       "RelativeMoniker": "D:0:0:{1FEBD063-10B8-47FD-A2A6-B3F3270EB83C}|ShowWrite.csproj|solutionrelative:mainwindow.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{1FEBD063-10B8-47FD-A2A6-B3F3270EB83C}|ShowWrite.csproj|c:\\users\\vum\\source\\repos\\showwrite\\mainwindow.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{1FEBD063-10B8-47FD-A2A6-B3F3270EB83C}|ShowWrite.csproj|solutionrelative:mainwindow.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{1FEBD063-10B8-47FD-A2A6-B3F3270EB83C}|ShowWrite.csproj|c:\\users\\vum\\source\\repos\\showwrite\\themes\\darktheme.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}",
@@ -22,7 +22,7 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 2,
+          "SelectedChildIndex": 3,
           "Children": [
             {
               "$type": "Bookmark",
@@ -34,7 +34,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 0,
+              "DocumentIndex": 1,
               "Title": "MainWindow.xaml.cs",
               "DocumentMoniker": "C:\\Users\\vum\\source\\repos\\ShowWrite\\MainWindow.xaml.cs",
               "RelativeDocumentMoniker": "MainWindow.xaml.cs",
@@ -47,12 +47,12 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 1,
+              "DocumentIndex": 0,
               "Title": "MainWindow.xaml",
               "DocumentMoniker": "C:\\Users\\vum\\source\\repos\\ShowWrite\\MainWindow.xaml",
               "RelativeDocumentMoniker": "MainWindow.xaml",
-              "ToolTip": "C:\\Users\\vum\\source\\repos\\ShowWrite\\MainWindow.xaml",
-              "RelativeToolTip": "MainWindow.xaml",
+              "ToolTip": "C:\\Users\\vum\\source\\repos\\ShowWrite\\MainWindow.xaml*",
+              "RelativeToolTip": "MainWindow.xaml*",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003549|",
               "WhenOpened": "2026-01-23T12:32:08.08Z",
               "EditorCaption": ""
