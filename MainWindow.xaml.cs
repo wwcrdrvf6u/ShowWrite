@@ -2,19 +2,23 @@
 using Newtonsoft.Json;
 using ShowWrite.Models;
 using ShowWrite.Services;
+using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
+using System.Linq;
 using System.Text;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Data;
+using System.Windows.Documents;
 using System.Windows.Ink;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
 using System.Windows.Threading;
-using MessageBox = System.Windows.MessageBox;
-using WinMouseEventArgs = System.Windows.Input.MouseEventArgs;
 
 // 为有冲突的类型添加明确的别名
 using WinPoint = System.Windows.Point;
@@ -25,6 +29,9 @@ using WinButton = System.Windows.Controls.Button;
 using WinBrushes = System.Windows.Media.Brushes;
 using WinBrush = System.Windows.Media.Brush;
 using Button = System.Windows.Controls.Button;
+using MessageBox = System.Windows.MessageBox;
+using Image = System.Drawing.Image;
+using Brushes = System.Drawing.Brushes;
 
 namespace ShowWrite
 {
@@ -267,6 +274,7 @@ namespace ShowWrite
             // 应用新的资源字典
             this.Resources = resourceDictionary;
         }
+
         private void MainWindow_SizeChanged(object sender, SizeChangedEventArgs e)
         {
             // 如果在校正模式下，重新初始化校正点位置
@@ -410,6 +418,9 @@ namespace ShowWrite
 
                 // 数据绑定
                 PhotoList.ItemsSource = _photos;
+
+                // 设置照片列表的数据模板
+                PhotoList.ItemTemplate = CreatePhotoListItemTemplate();
 
                 // 初始化实时模式笔迹
                 _drawingManager.SwitchToPhotoStrokes(_liveStrokes);
@@ -715,15 +726,351 @@ namespace ShowWrite
 
         #region UI事件处理
 
-        // 鼠标事件委托给对应的管理器
+        #region 画笔设置悬浮窗交互逻辑
+
+        /// <summary>
+        /// 画笔按钮点击事件（修改版）
+        /// </summary>
+        private void PenBtn_Click(object sender, RoutedEventArgs e)
+        {
+            // 如果当前不是画笔模式，切换到画笔模式并打开悬浮窗
+            if (_drawingManager.CurrentMode != DrawingManager.ToolMode.Pen)
+            {
+                SetMode(DrawingManager.ToolMode.Pen);
+
+                // 打开画笔设置悬浮窗
+                PenSettingsPopup.IsOpen = true;
+                Logger.Debug("MainWindow", "切换到画笔模式并打开设置悬浮窗");
+            }
+            else
+            {
+                // 如果已经是画笔模式，切换悬浮窗的显示状态
+                PenSettingsPopup.IsOpen = !PenSettingsPopup.IsOpen;
+                Logger.Debug("MainWindow", $"画笔模式已选中，切换悬浮窗状态: {PenSettingsPopup.IsOpen}");
+            }
+        }
+
+        /// <summary>
+        /// VideoArea鼠标按下事件 - 添加悬浮窗自动隐藏逻辑
+        /// </summary>
         private void VideoArea_MouseDown(object sender, MouseButtonEventArgs e)
         {
-            if (_isPerspectiveCorrectionMode) return;
+            if (_isClosing || _isPerspectiveCorrectionMode) return;
 
-            // 直接调用管理器方法，不检查_enabled状态（由管理器内部检查）
+            // 自动隐藏画笔设置悬浮窗
+            if (PenSettingsPopup.IsOpen && _drawingManager.CurrentMode == DrawingManager.ToolMode.Pen)
+            {
+                PenSettingsPopup.IsOpen = false;
+                Logger.Debug("MainWindow", "点击VideoArea，自动隐藏画笔设置悬浮窗");
+            }
+
+            // 自动隐藏照片悬浮窗
+            if (PhotoPopup.IsOpen)
+            {
+                PhotoPopup.IsOpen = false;
+                Logger.Debug("MainWindow", "点击VideoArea，自动隐藏照片悬浮窗");
+            }
+
+            // 调用原有的鼠标事件处理
             _panZoomManager.HandleMouseDown(e, _drawingManager.CurrentMode);
             _drawingManager.HandleMouseDown(e);
         }
+
+        /// <summary>
+        /// VideoArea鼠标左键按下事件（双击对焦）- 添加悬浮窗自动隐藏逻辑
+        /// </summary>
+        private void VideoArea_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            if (_isClosing || _isPerspectiveCorrectionMode) return;
+
+            // 自动隐藏画笔设置悬浮窗
+            if (PenSettingsPopup.IsOpen && _drawingManager.CurrentMode == DrawingManager.ToolMode.Pen)
+            {
+                PenSettingsPopup.IsOpen = false;
+                Logger.Debug("MainWindow", "点击VideoArea，自动隐藏画笔设置悬浮窗");
+            }
+
+            // 自动隐藏照片悬浮窗
+            if (PhotoPopup.IsOpen)
+            {
+                PhotoPopup.IsOpen = false;
+                Logger.Debug("MainWindow", "点击VideoArea，自动隐藏照片悬浮窗");
+            }
+
+            // 原有的双击检测逻辑
+            var currentTime = DateTime.Now;
+            var timeSinceLastClick = (currentTime - _lastClickTime).TotalMilliseconds;
+
+            if (timeSinceLastClick <= DoubleClickDelay)
+            {
+                // 双击事件 - 自动对焦
+                if (_drawingManager.CurrentMode == DrawingManager.ToolMode.Move)
+                {
+                    try
+                    {
+                        if (_cameraManager.IsCameraAvailable)
+                        {
+                            _cameraManager.AutoFocus();
+                            Logger.Info("MainWindow", "触发自动对焦");
+                            MessageBox.Show("已触发自动对焦。", "对焦");
+                        }
+                        else
+                        {
+                            Logger.Warning("MainWindow", "没有可用的摄像头，无法进行自动对焦");
+                            MessageBox.Show("没有可用的摄像头，无法进行自动对焦。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.Error("MainWindow", $"自动对焦失败: {ex.Message}", ex);
+                        MessageBox.Show("自动对焦失败: " + ex.Message, "错误");
+                    }
+                }
+                _lastClickTime = DateTime.MinValue; // 重置
+            }
+            else
+            {
+                _lastClickTime = currentTime;
+            }
+
+            // 调用绘制管理器的鼠标按下处理
+            _drawingManager.HandleMouseDown(e);
+        }
+
+        #endregion
+
+        #region 照片栏交互逻辑修改
+
+        /// <summary>
+        /// 照片悬浮窗打开事件 - 修改版：更新列表项模板
+        /// </summary>
+        private void PhotoPopup_Opened(object sender, EventArgs e)
+        {
+            try
+            {
+                // 重新定位照片悬浮窗
+                RepositionPhotoPopup();
+
+                // 更新列表项模板，为已选中的照片添加提示文字
+                UpdatePhotoListTemplate();
+
+                Logger.Debug("MainWindow", "照片悬浮窗已打开，更新列表项模板");
+            }
+            catch (Exception ex)
+            {
+                Logger.Error("MainWindow", $"照片悬浮窗打开事件失败: {ex.Message}", ex);
+            }
+        }
+
+        /// <summary>
+        /// 更新照片列表项模板
+        /// </summary>
+        private void UpdatePhotoListTemplate()
+        {
+            // 如果已经有数据模板，则更新它
+            if (PhotoList.ItemTemplate == null)
+            {
+                return;
+            }
+
+            // 刷新列表显示
+            PhotoList.Items.Refresh();
+        }
+
+        /// <summary>
+        /// 照片列表项模板 - 修改版：为已选中的照片添加提示文字
+        /// </summary>
+        private DataTemplate CreatePhotoListItemTemplate()
+        {
+            // 创建一个数据模板
+            var dataTemplate = new DataTemplate();
+
+            // 创建框架
+            var stackPanelFactory = new FrameworkElementFactory(typeof(StackPanel));
+            stackPanelFactory.SetValue(StackPanel.OrientationProperty, System.Windows.Controls.Orientation.Horizontal);
+            stackPanelFactory.SetValue(StackPanel.MarginProperty, new Thickness(6));
+
+            // 创建缩略图
+            var imageFactory = new FrameworkElementFactory(typeof(Image));
+            imageFactory.SetValue(Image.WidthProperty, 70.0);
+            imageFactory.SetValue(Image.HeightProperty, 52.0);
+            imageFactory.SetBinding(Image.SourceProperty, new System.Windows.Data.Binding("Thumbnail"));
+            imageFactory.SetValue(Image.StretchProperty, Stretch.UniformToFill);
+
+            // 创建右侧信息面板
+            var infoPanelFactory = new FrameworkElementFactory(typeof(StackPanel));
+            infoPanelFactory.SetValue(StackPanel.MarginProperty, new Thickness(10, 0, 0, 0));
+            infoPanelFactory.SetValue(StackPanel.VerticalAlignmentProperty, VerticalAlignment.Center);
+
+            // 时间戳
+            var timestampFactory = new FrameworkElementFactory(typeof(TextBlock));
+            timestampFactory.SetValue(TextBlock.ForegroundProperty, Brushes.White);
+            timestampFactory.SetValue(TextBlock.FontWeightProperty, FontWeights.Bold);
+            timestampFactory.SetBinding(TextBlock.TextProperty, new System.Windows.Data.Binding("Timestamp"));
+
+            // 笔迹数
+            var strokesFactory = new FrameworkElementFactory(typeof(TextBlock));
+            strokesFactory.SetValue(TextBlock.ForegroundProperty, Brushes.LightGray);
+            strokesFactory.SetValue(TextBlock.FontSizeProperty, 12.0);
+            strokesFactory.SetBinding(TextBlock.TextProperty, new System.Windows.Data.Binding("Strokes.Count")
+            {
+                StringFormat = "笔迹数: {0}"
+            });
+
+            // 选中状态提示文字
+            var selectedTipFactory = new FrameworkElementFactory(typeof(TextBlock));
+            selectedTipFactory.SetValue(TextBlock.ForegroundProperty, Brushes.Yellow);
+            selectedTipFactory.SetValue(TextBlock.FontSizeProperty, 11.0);
+            selectedTipFactory.SetValue(TextBlock.FontWeightProperty, FontWeights.SemiBold);
+            selectedTipFactory.SetValue(TextBlock.MarginProperty, new Thickness(0, 5, 0, 0));
+
+            // 使用多重绑定和值转换器来确定是否显示提示文字
+            var multiBinding = new MultiBinding();
+            multiBinding.Bindings.Add(new System.Windows.Data.Binding(".")); // 当前项
+            multiBinding.Bindings.Add(new System.Windows.Data.Binding("CurrentPhoto") { Source = this });
+            multiBinding.Converter = new PhotoSelectedTipConverter();
+
+            selectedTipFactory.SetBinding(TextBlock.TextProperty, multiBinding);
+
+            // 组合面板
+            infoPanelFactory.AppendChild(timestampFactory);
+            infoPanelFactory.AppendChild(strokesFactory);
+            infoPanelFactory.AppendChild(selectedTipFactory);
+
+            // 组合主面板
+            stackPanelFactory.AppendChild(imageFactory);
+            stackPanelFactory.AppendChild(infoPanelFactory);
+
+            dataTemplate.VisualTree = stackPanelFactory;
+            return dataTemplate;
+        }
+
+        /// <summary>
+        /// 照片选择状态提示转换器
+        /// </summary>
+        public class PhotoSelectedTipConverter : IMultiValueConverter
+        {
+            public object Convert(object[] values, Type targetType, object parameter, System.Globalization.CultureInfo culture)
+            {
+                if (values.Length >= 2)
+                {
+                    var currentItem = values[0] as PhotoWithStrokes;
+                    var currentPhoto = values[1] as PhotoWithStrokes;
+
+                    if (currentItem != null && currentPhoto != null && currentItem == currentPhoto)
+                    {
+                        return "再次点击返回直播";
+                    }
+                }
+                return string.Empty;
+            }
+
+            public object[] ConvertBack(object value, Type[] targetTypes, object parameter, System.Globalization.CultureInfo culture)
+            {
+                throw new NotImplementedException();
+            }
+        }
+
+        /// <summary>
+        /// 照片列表选择变更事件 - 修改版：支持点击已选中项返回直播
+        /// </summary>
+        private void PhotoList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (_isClosing) return;
+
+            // 如果没有选中任何项，直接返回
+            if (PhotoList.SelectedItem == null)
+                return;
+
+            if (PhotoList.SelectedItem is PhotoWithStrokes photoWithStrokes)
+            {
+                // 检查是否点击了已选中的照片
+                if (_currentPhoto != null && _currentPhoto == photoWithStrokes && !_isLiveMode)
+                {
+                    // 再次点击已选中的照片，返回实时模式
+                    Logger.Info("MainWindow", "再次点击已选中照片，返回实时模式");
+
+                    // 返回实时模式
+                    BackToLive_Click(sender, e);
+
+                    // 清空选中项
+                    PhotoList.SelectedItem = null;
+                    return;
+                }
+
+                // 如果是选择新的照片
+                Logger.Info("MainWindow", "选择照片查看模式");
+
+                // 保存当前实时模式的笔迹
+                _liveStrokes = new StrokeCollection(_drawingManager.GetStrokes());
+                _isLiveMode = false;
+                _currentPhoto = photoWithStrokes;
+                VideoImage.Source = photoWithStrokes.Image;
+
+                // 切换绘制管理器的StrokeCollection到照片的笔迹
+                _drawingManager.SwitchToPhotoStrokes(photoWithStrokes.Strokes);
+
+                // 重置缩放状态
+                _panZoomManager.ResetZoom();
+
+                // 释放摄像头资源
+                _cameraManager.ReleaseCameraResources();
+
+                // 触发GC释放旧资源
+                _memoryManager.TriggerMemoryCleanup();
+
+                // 更新列表显示（显示提示文字）
+                PhotoList.Items.Refresh();
+            }
+        }
+
+        /// <summary>
+        /// 返回实时模式 - 修改版：更新照片列表状态
+        /// </summary>
+        private void BackToLive_Click(object sender, RoutedEventArgs e)
+        {
+            if (_isClosing) return;
+
+            Logger.Info("MainWindow", "返回实时模式");
+
+            // 保存当前照片的笔迹
+            if (_currentPhoto != null)
+            {
+                _currentPhoto.Strokes = new StrokeCollection(_drawingManager.GetStrokes());
+            }
+
+            _isLiveMode = true;
+            _currentPhoto = null;
+
+            // 清空照片列表选中项
+            PhotoList.SelectedItem = null;
+
+            // 切换回实时模式的笔迹
+            _drawingManager.SwitchToPhotoStrokes(_liveStrokes);
+
+            // 重置缩放
+            _panZoomManager.ResetZoom();
+
+            // 重置视频帧记录状态
+            _isFirstFrameProcessed = false;
+            Logger.ResetVideoFrameLogging();
+
+            // 重启摄像头
+            _cameraManager.RestartCamera();
+
+            // 内存清理
+            _memoryManager.TriggerMemoryCleanup();
+
+            // 更新照片列表显示
+            if (PhotoList != null)
+            {
+                PhotoList.Items.Refresh();
+            }
+
+            Logger.Info("MainWindow", "已返回实时模式");
+        }
+
+        #endregion
 
         private void VideoArea_MouseMove(object sender, WinMouseEventArgs e)
         {
@@ -1652,44 +1999,6 @@ namespace ShowWrite
         }
 
         /// <summary>
-        /// 返回实时模式
-        /// </summary>
-        private void BackToLive_Click(object sender, RoutedEventArgs e)
-        {
-            if (_isClosing) return;
-
-            Logger.Info("MainWindow", "返回实时模式");
-
-            // 保存当前照片的笔迹
-            if (_currentPhoto != null)
-            {
-                _currentPhoto.Strokes = new StrokeCollection(_drawingManager.GetStrokes());
-            }
-
-            _isLiveMode = true;
-            _currentPhoto = null;
-            PhotoList.SelectedItem = null;
-
-            // 切换回实时模式的笔迹
-            _drawingManager.SwitchToPhotoStrokes(_liveStrokes);
-
-            // 重置缩放
-            _panZoomManager.ResetZoom();
-
-            // 重置视频帧记录状态
-            _isFirstFrameProcessed = false;
-            Logger.ResetVideoFrameLogging();
-
-            // 重启摄像头
-            _cameraManager.RestartCamera();
-
-            // 内存清理
-            _memoryManager.TriggerMemoryCleanup();
-
-            Logger.Info("MainWindow", "已返回实时模式");
-        }
-
-        /// <summary>
         /// 扫码功能
         /// </summary>
         private void ScanQRCode_Click(object sender, RoutedEventArgs e)
@@ -1984,53 +2293,6 @@ namespace ShowWrite
         #endregion
 
         #region 其他事件处理方法
-
-        /// <summary>
-        /// 视频区域鼠标左键双击事件处理（自动对焦）
-        /// </summary>
-        private void VideoArea_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
-        {
-            if (_isClosing || _isPerspectiveCorrectionMode) return;
-
-            var currentTime = DateTime.Now;
-            var timeSinceLastClick = (currentTime - _lastClickTime).TotalMilliseconds;
-
-            // 双击检测
-            if (timeSinceLastClick <= DoubleClickDelay)
-            {
-                // 双击事件 - 自动对焦
-                if (_drawingManager.CurrentMode == DrawingManager.ToolMode.Move)
-                {
-                    try
-                    {
-                        if (_cameraManager.IsCameraAvailable)
-                        {
-                            _cameraManager.AutoFocus();
-                            Logger.Info("MainWindow", "触发自动对焦");
-                            MessageBox.Show("已触发自动对焦。", "对焦");
-                        }
-                        else
-                        {
-                            Logger.Warning("MainWindow", "没有可用的摄像头，无法进行自动对焦");
-                            MessageBox.Show("没有可用的摄像头，无法进行自动对焦。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        Logger.Error("MainWindow", $"自动对焦失败: {ex.Message}", ex);
-                        MessageBox.Show("自动对焦失败: " + ex.Message, "错误");
-                    }
-                }
-                _lastClickTime = DateTime.MinValue; // 重置
-            }
-            else
-            {
-                _lastClickTime = currentTime;
-            }
-
-            // 调用绘制管理器的鼠标按下处理
-            _drawingManager.HandleMouseDown(e);
-        }
 
         /// <summary>
         /// 文档扫描功能
@@ -3179,26 +3441,6 @@ namespace ShowWrite
             }
         }
 
-        private void PenBtn_Click(object sender, RoutedEventArgs e)
-        {
-            // 如果当前不是画笔模式，切换到画笔模式
-            if (_drawingManager.CurrentMode != DrawingManager.ToolMode.Pen)
-            {
-                SetMode(DrawingManager.ToolMode.Pen);
-
-                // 打开画笔设置悬浮窗
-                PenSettingsPopup.IsOpen = true;
-            }
-            else
-            {
-                // 如果已经是画笔模式，保持选中状态（不取消）
-                PenBtn.IsChecked = true;
-
-                // 切换画笔设置悬浮窗的显示/隐藏
-                PenSettingsPopup.IsOpen = !PenSettingsPopup.IsOpen;
-            }
-        }
-
         private void EraserBtn_Click(object sender, RoutedEventArgs e)
         {
             // 如果当前不是橡皮擦模式，切换到橡皮擦模式
@@ -3310,27 +3552,23 @@ namespace ShowWrite
             Logger.Debug("MainWindow", "切换照片面板显示状态");
         }
 
-        private void PhotoList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        #endregion
+
+        #region 公开属性（用于数据绑定）
+
+        /// <summary>
+        /// 当前选中的照片（用于数据绑定）
+        /// </summary>
+        public PhotoWithStrokes CurrentPhoto
         {
-            if (_isClosing) return;
-
-            if (PhotoList.SelectedItem is PhotoWithStrokes photoWithStrokes)
+            get { return _currentPhoto; }
+            set
             {
-                // 保存当前实时模式的笔迹
-                _liveStrokes = new StrokeCollection(_drawingManager.GetStrokes());
-                _isLiveMode = false;
-                _currentPhoto = photoWithStrokes;
-                VideoImage.Source = photoWithStrokes.Image;
-                // 切换绘制管理器的StrokeCollection到照片的笔迹
-                _drawingManager.SwitchToPhotoStrokes(photoWithStrokes.Strokes);
-                // 重置缩放状态
-                _panZoomManager.ResetZoom();
-                // 释放摄像头资源
-                _cameraManager.ReleaseCameraResources();
-                // 触发GC释放旧资源
-                _memoryManager.TriggerMemoryCleanup();
-
-                Logger.Info("MainWindow", "切换到照片查看模式");
+                if (_currentPhoto != value)
+                {
+                    _currentPhoto = value;
+                    // 通知属性变更，如果需要的话
+                }
             }
         }
 

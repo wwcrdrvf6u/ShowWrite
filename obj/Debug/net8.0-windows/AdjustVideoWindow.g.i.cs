@@ -93,7 +93,7 @@ namespace ShowWrite {
                 return;
             }
             _contentLoaded = true;
-            System.Uri resourceLocater = new System.Uri("/ShowWrite;component/adjustvideowindow.xaml", System.UriKind.Relative);
+            System.Uri resourceLocater = new System.Uri("/ShowWrite;V2.1.5.0;component/adjustvideowindow.xaml", System.UriKind.Relative);
             
             #line 1 "..\..\..\AdjustVideoWindow.xaml"
             System.Windows.Application.LoadComponent(this, resourceLocater);

@@ -52,3 +52,5 @@ C:\Users\vum\Source\Repos\ShowWrite\obj\Debug\net8.0-windows\refint\ShowWrite.dl
 C:\Users\vum\Source\Repos\ShowWrite\obj\Debug\net8.0-windows\ShowWrite.pdb
 C:\Users\vum\Source\Repos\ShowWrite\obj\Debug\net8.0-windows\ShowWrite.genruntimeconfig.cache
 C:\Users\vum\Source\Repos\ShowWrite\obj\Debug\net8.0-windows\ref\ShowWrite.dll
+C:\Users\vum\Source\Repos\ShowWrite\obj\Debug\net8.0-windows\GeneratedInternalTypeHelper.g.cs
+C:\Users\vum\Source\Repos\ShowWrite\obj\Debug\net8.0-windows\ShowWrite_MarkupCompile.lref

@@ -2,6 +2,7 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" 
         Title="ShowWrite视频展台" WindowState="Maximized" Background="{DynamicResource WindowBackgroundBrush}" WindowStyle="None"
+        xmlns:local="clr-namespace:ShowWrite"
         MouseWheel="Window_MouseWheel" Width="1558">
 
     <Window.Resources>
@@ -69,6 +70,9 @@
                 <Setter Property="Stroke" Value="#666"/>
                 <Setter Property="StrokeThickness" Value="1"/>
             </Style>
+
+            <!-- 照片选择状态提示转换器 -->
+            <local:PhotoSelectedTipConverter x:Key="PhotoSelectedTipConverter"/>
         </ResourceDictionary>
     </Window.Resources>
 
@@ -272,18 +276,9 @@
             <Border Width="400" Height="500" Background="#2C3E50" CornerRadius="6" BorderBrush="White" BorderThickness="1">
                 <DockPanel>
                     <TextBlock Text="拍摄记录" Foreground="White" FontSize="16" FontWeight="Bold" Margin="10" DockPanel.Dock="Top"/>
+                    <!-- 照片列表 - 使用动态数据模板 -->
                     <ListBox x:Name="PhotoList" SelectionChanged="PhotoList_SelectionChanged">
-                        <ListBox.ItemTemplate>
-                            <DataTemplate>
-                                <StackPanel Orientation="Horizontal" Margin="6">
-                                    <Image Width="70" Height="52" Source="{Binding Thumbnail}" Stretch="UniformToFill" />
-                                    <StackPanel Margin="10,0,0,0">
-                                        <TextBlock Foreground="White" FontWeight="Bold" Text="{Binding Timestamp}" />
-                                        <TextBlock Foreground="#DDDDDD" FontSize="12" Text="{Binding Strokes.Count, StringFormat='笔迹数: {0}'}" />
-                                    </StackPanel>
-                                </StackPanel>
-                            </DataTemplate>
-                        </ListBox.ItemTemplate>
+                        <!-- 数据模板将在代码中动态创建 -->
                     </ListBox>
                     <StackPanel DockPanel.Dock="Bottom" Orientation="Vertical" HorizontalAlignment="Center" Margin="10">
                         <Button Style="{DynamicResource ButtonStyle}" Click="BackToLive_Click" Width="100" Height="40">
