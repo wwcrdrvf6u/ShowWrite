@@ -6,6 +6,8 @@ namespace ShowWrite.Models
 {
     public class CapturedImage
     {
+        private BitmapSource image;
+
         public BitmapImage Image { get; }
         public BitmapImage Thumbnail { get; }
         public StrokeCollection Strokes { get; }
@@ -17,6 +19,11 @@ namespace ShowWrite.Models
             Thumbnail = CreateThumbnail(image);
             Strokes = new StrokeCollection();
             Timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+        }
+
+        public CapturedImage(BitmapSource image)
+        {
+            this.image = image;
         }
 
         private BitmapImage CreateThumbnail(BitmapImage original)

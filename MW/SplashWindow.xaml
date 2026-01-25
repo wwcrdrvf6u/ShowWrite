@@ -24,8 +24,6 @@
                 </Setter.Value>
             </Setter>
         </Style>
-
-
     </Window.Resources>
 
     <Grid>
@@ -56,12 +54,46 @@
                           Foreground="#2F2F2F"
                           HorizontalAlignment="Left"
                           VerticalAlignment="Top"
-                          Margin="37,121,0,0">
+                          Margin="37,123,0,0">
+                    <TextBlock.Effect>
+                        <DropShadowEffect ShadowDepth="1" Opacity="0.2" BlurRadius="3" Color="Black"/>
+                    </TextBlock.Effect>
+                </TextBlock>
+                <TextBlock Text="开 源 视 频 展 台 行 业 跟 跑 者"
+                    FontFamily="Microsoft YaHei"
+                    FontSize="25"
+                    FontWeight="Light"
+                    Foreground="#2F2F2F"
+                    HorizontalAlignment="Left"
+                    VerticalAlignment="Top"
+                    Margin="37,211,0,0" RenderTransformOrigin="0.5,0.5">
+                    <TextBlock.RenderTransform>
+                        <TransformGroup>
+                            <ScaleTransform/>
+                            <SkewTransform/>
+                            <RotateTransform Angle="0"/>
+                            <TranslateTransform/>
+                        </TransformGroup>
+                    </TextBlock.RenderTransform>
                     <TextBlock.Effect>
                         <DropShadowEffect ShadowDepth="1" Opacity="0.2" BlurRadius="3" Color="Black"/>
                     </TextBlock.Effect>
                 </TextBlock>
 
+                <!-- 版本信息 -->
+                <TextBlock FontFamily="Microsoft YaHei"
+                        FontSize="18"
+                        FontWeight="Light"
+                        Foreground="#555555"
+                        HorizontalAlignment="Left"
+                        VerticalAlignment="Top"
+                        Margin="37,271,0,0">
+                    <TextBlock.Effect>
+                        <DropShadowEffect ShadowDepth="0.5" Opacity="0.1" BlurRadius="2" Color="Black"/>
+                    </TextBlock.Effect>
+                    <Run Text="软件版本 "/>
+                    <Run x:Name="VersionText" Text="v2.1.5.0"/> <!-- 这里可以在代码后台动态设置 -->
+                </TextBlock>
                 <TextBlock Text="正在启！动！"
                           FontFamily="Segoe UI"
                           FontSize="14"

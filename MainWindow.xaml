@@ -276,10 +276,12 @@
             <Border Width="400" Height="500" Background="#2C3E50" CornerRadius="6" BorderBrush="White" BorderThickness="1">
                 <DockPanel>
                     <TextBlock Text="拍摄记录" Foreground="White" FontSize="16" FontWeight="Bold" Margin="10" DockPanel.Dock="Top"/>
-                    <!-- 照片列表 - 使用动态数据模板 -->
-                    <ListBox x:Name="PhotoList" SelectionChanged="PhotoList_SelectionChanged">
-                        <!-- 数据模板将在代码中动态创建 -->
+
+                    <!-- 照片列表 -->
+                    <ListBox x:Name="PhotoList">
+                        <!-- 数据模板将由 PhotoPopupManager 动态创建 -->
                     </ListBox>
+
                     <StackPanel DockPanel.Dock="Bottom" Orientation="Vertical" HorizontalAlignment="Center" Margin="10">
                         <Button Style="{DynamicResource ButtonStyle}" Click="BackToLive_Click" Width="100" Height="40">
                             <StackPanel Orientation="Vertical" HorizontalAlignment="Center" VerticalAlignment="Center">

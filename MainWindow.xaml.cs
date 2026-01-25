@@ -48,10 +48,10 @@ namespace ShowWrite
         private FrameProcessor _frameProcessor;
         private TouchManager _touchManager;
         private LogManager _logManager;
+        private PhotoPopupManager _photoPopupManager;
 
         // 数据集合
         private readonly ObservableCollection<PhotoWithStrokes> _photos = new();
-        private PhotoWithStrokes _currentPhoto;
         private StrokeCollection _liveStrokes = new StrokeCollection();
 
         // 状态变量
@@ -196,7 +196,6 @@ namespace ShowWrite
             }
         }
 
-
         /// <summary>
         /// 内部关闭启动图窗口
         /// </summary>
@@ -288,7 +287,7 @@ namespace ShowWrite
             // 如果照片悬浮窗打开，重新定位
             if (PhotoPopup != null && PhotoPopup.IsOpen)
             {
-                RepositionPhotoPopup();
+                _photoPopupManager.RepositionPhotoPopup();
             }
         }
 
@@ -322,6 +321,9 @@ namespace ShowWrite
                 // 7. 初始化触控管理器
                 _touchManager = new TouchManager(_drawingManager);
 
+                // 8. 初始化照片悬浮窗管理器
+                InitializePhotoPopupManager();
+
                 // 订阅事件
                 SubscribeToEvents();
 
@@ -332,6 +334,108 @@ namespace ShowWrite
                 Logger.Error("MainWindow", $"初始化管理器失败: {ex.Message}", ex);
                 throw;
             }
+        }
+
+        /// <summary>
+        /// 初始化照片悬浮窗管理器
+        /// </summary>
+        private void InitializePhotoPopupManager()
+        {
+            try
+            {
+                _photoPopupManager = new PhotoPopupManager(
+                    PhotoPopup,
+                    PhotoList,
+                    this,
+                    _photos,
+                    _drawingManager,
+                    _cameraManager,
+                    _memoryManager,
+                    _frameProcessor,
+                    _panZoomManager,
+                    _logManager);
+
+                // 订阅照片悬浮窗管理器事件
+                _photoPopupManager.PhotoSelected += OnPhotoSelected;
+                _photoPopupManager.BackToLiveRequested += OnBackToLiveRequested;
+                _photoPopupManager.SaveImageRequested += OnSaveImageRequested;
+
+                Logger.Info("MainWindow", "照片悬浮窗管理器初始化完成");
+            }
+            catch (Exception ex)
+            {
+                Logger.Error("MainWindow", $"初始化照片悬浮窗管理器失败: {ex.Message}", ex);
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// 照片选择事件处理
+        /// </summary>
+        private void OnPhotoSelected(PhotoWithStrokes photo)
+        {
+            Dispatcher.Invoke(() =>
+            {
+                try
+                {
+                    // 显示选中的照片
+                    VideoImage.Source = photo?.Image;
+
+                    Logger.Debug("MainWindow", $"照片选择事件处理完成");
+                }
+                catch (Exception ex)
+                {
+                    Logger.Error("MainWindow", $"处理照片选择事件失败: {ex.Message}", ex);
+                }
+            });
+        }
+
+        /// <summary>
+        /// 返回实时模式请求处理
+        /// </summary>
+        private void OnBackToLiveRequested()
+        {
+            Dispatcher.Invoke(() =>
+            {
+                try
+                {
+                    // 重置视频帧记录状态
+                    _isFirstFrameProcessed = false;
+                    Logger.ResetVideoFrameLogging();
+
+                    // 重启摄像头
+                    _cameraManager.RestartCamera();
+
+                    _isLiveMode = true;
+
+                    Logger.Info("MainWindow", "返回实时模式请求处理完成");
+                }
+                catch (Exception ex)
+                {
+                    Logger.Error("MainWindow", $"处理返回实时模式请求失败: {ex.Message}", ex);
+                }
+            });
+        }
+
+        /// <summary>
+        /// 保存图片请求处理
+        /// </summary>
+        private void OnSaveImageRequested()
+        {
+            Dispatcher.Invoke(() =>
+            {
+                try
+                {
+                    // 调用原有的保存图片逻辑
+                    SaveImage_Click(null, null);
+
+                    Logger.Debug("MainWindow", "保存图片请求处理完成");
+                }
+                catch (Exception ex)
+                {
+                    Logger.Error("MainWindow", $"处理保存图片请求失败: {ex.Message}", ex);
+                }
+            });
         }
 
         /// <summary>
@@ -391,15 +495,17 @@ namespace ShowWrite
                     _touchManager.OnTouchCenterChanged -= OnTouchCenterChanged;
                 }
 
+                // 取消照片悬浮窗管理器事件
+                if (_photoPopupManager != null)
+                {
+                    _photoPopupManager.PhotoSelected -= OnPhotoSelected;
+                    _photoPopupManager.BackToLiveRequested -= OnBackToLiveRequested;
+                    _photoPopupManager.SaveImageRequested -= OnSaveImageRequested;
+                }
+
                 // 取消窗口事件
                 this.Loaded -= MainWindow_Loaded;
                 this.SizeChanged -= MainWindow_SizeChanged;
-
-                // 取消照片悬浮窗事件
-                if (PhotoPopup != null)
-                {
-                    PhotoPopup.Opened -= PhotoPopup_Opened;
-                }
 
                 Logger.Info("MainWindow", "所有事件订阅已取消");
             }
@@ -418,12 +524,6 @@ namespace ShowWrite
             {
                 Logger.Debug("MainWindow", "开始初始化UI");
 
-                // 数据绑定
-                PhotoList.ItemsSource = _photos;
-
-                // 设置照片列表的数据模板
-                PhotoList.ItemTemplate = CreatePhotoListItemTemplate();
-
                 // 初始化实时模式笔迹
                 _drawingManager.SwitchToPhotoStrokes(_liveStrokes);
 
@@ -437,7 +537,6 @@ namespace ShowWrite
                 // 初始化UI组件
                 InitializePenSettingsPopup();
                 InitializeTouchInfoPopup();
-                InitializePhotoPopup();
 
                 // 初始化画笔颜色选择器
                 InitializePenColorSelector();
@@ -533,24 +632,6 @@ namespace ShowWrite
             catch (Exception ex)
             {
                 Logger.Error("MainWindow", $"初始化触控信息悬浮窗失败: {ex.Message}", ex);
-            }
-        }
-
-        /// <summary>
-        /// 初始化照片悬浮窗
-        /// </summary>
-        private void InitializePhotoPopup()
-        {
-            try
-            {
-                // 订阅Popup打开事件，动态设置位置
-                PhotoPopup.Opened += PhotoPopup_Opened;
-
-                Logger.Debug("MainWindow", "照片悬浮窗初始化完成");
-            }
-            catch (Exception ex)
-            {
-                Logger.Error("MainWindow", $"初始化照片悬浮窗失败: {ex.Message}", ex);
             }
         }
 
@@ -769,7 +850,7 @@ namespace ShowWrite
             // 自动隐藏照片悬浮窗
             if (PhotoPopup.IsOpen)
             {
-                PhotoPopup.IsOpen = false;
+                _photoPopupManager.HidePhotoPopup();
                 Logger.Debug("MainWindow", "点击VideoArea，自动隐藏照片悬浮窗");
             }
 
@@ -795,7 +876,7 @@ namespace ShowWrite
             // 自动隐藏照片悬浮窗
             if (PhotoPopup.IsOpen)
             {
-                PhotoPopup.IsOpen = false;
+                _photoPopupManager.HidePhotoPopup();
                 Logger.Debug("MainWindow", "点击VideoArea，自动隐藏照片悬浮窗");
             }
 
@@ -837,213 +918,6 @@ namespace ShowWrite
 
             // 调用绘制管理器的鼠标按下处理
             _drawingManager.HandleMouseDown(e);
-        }
-
-        #endregion
-
-        #region 照片栏交互逻辑修改
-
-        /// <summary>
-        /// 照片悬浮窗打开事件 - 修改版：更新列表项模板
-        /// </summary>
-        private void PhotoPopup_Opened(object sender, EventArgs e)
-        {
-            try
-            {
-                // 重新定位照片悬浮窗
-                RepositionPhotoPopup();
-
-                // 更新列表项模板，为已选中的照片添加提示文字
-                UpdatePhotoListTemplate();
-
-                Logger.Debug("MainWindow", "照片悬浮窗已打开，更新列表项模板");
-            }
-            catch (Exception ex)
-            {
-                Logger.Error("MainWindow", $"照片悬浮窗打开事件失败: {ex.Message}", ex);
-            }
-        }
-
-        /// <summary>
-        /// 更新照片列表项模板
-        /// </summary>
-        private void UpdatePhotoListTemplate()
-        {
-            // 如果已经有数据模板，则更新它
-            if (PhotoList.ItemTemplate == null)
-            {
-                return;
-            }
-
-            // 刷新列表显示
-            PhotoList.Items.Refresh();
-        }
-
-        /// <summary>
-        /// 照片列表项模板 - 修改版：为已选中的照片添加提示文字
-        /// </summary>
-        private DataTemplate CreatePhotoListItemTemplate()
-        {
-            // 创建一个数据模板
-            var dataTemplate = new DataTemplate();
-
-            // 创建框架
-            var stackPanelFactory = new FrameworkElementFactory(typeof(StackPanel));
-            stackPanelFactory.SetValue(StackPanel.OrientationProperty, System.Windows.Controls.Orientation.Horizontal);
-            stackPanelFactory.SetValue(StackPanel.MarginProperty, new Thickness(6));
-
-            // 创建缩略图 - 使用 WpfImage 别名
-            var imageFactory = new FrameworkElementFactory(typeof(WpfImage));
-            imageFactory.SetValue(WpfImage.WidthProperty, 70.0);
-            imageFactory.SetValue(WpfImage.HeightProperty, 52.0);
-            imageFactory.SetBinding(WpfImage.SourceProperty, new System.Windows.Data.Binding("Thumbnail"));
-            imageFactory.SetValue(WpfImage.StretchProperty, Stretch.UniformToFill);
-
-            // 创建右侧信息面板
-            var infoPanelFactory = new FrameworkElementFactory(typeof(StackPanel));
-            infoPanelFactory.SetValue(StackPanel.MarginProperty, new Thickness(10, 0, 0, 0));
-            infoPanelFactory.SetValue(StackPanel.VerticalAlignmentProperty, VerticalAlignment.Center);
-
-            // 时间戳
-            var timestampFactory = new FrameworkElementFactory(typeof(TextBlock));
-            timestampFactory.SetValue(TextBlock.ForegroundProperty, System.Windows.Media.Brushes.White); // 使用 WPF Brushes
-            timestampFactory.SetValue(TextBlock.FontWeightProperty, FontWeights.Bold);
-            timestampFactory.SetBinding(TextBlock.TextProperty, new System.Windows.Data.Binding("Timestamp"));
-
-            // 笔迹数
-            var strokesFactory = new FrameworkElementFactory(typeof(TextBlock));
-            strokesFactory.SetValue(TextBlock.ForegroundProperty, System.Windows.Media.Brushes.LightGray); // 使用 WPF Brushes
-            strokesFactory.SetValue(TextBlock.FontSizeProperty, 12.0);
-            strokesFactory.SetBinding(TextBlock.TextProperty, new Binding("Strokes.Count")
-            {
-                StringFormat = "笔迹数: {0}"
-            });
-
-            // 选中状态提示文字
-            var selectedTipFactory = new FrameworkElementFactory(typeof(TextBlock));
-            selectedTipFactory.SetValue(TextBlock.ForegroundProperty, System.Windows.Media.Brushes.Yellow); // 使用 WPF Brushes
-            selectedTipFactory.SetValue(TextBlock.FontSizeProperty, 11.0);
-            selectedTipFactory.SetValue(TextBlock.FontWeightProperty, FontWeights.SemiBold);
-            selectedTipFactory.SetValue(TextBlock.MarginProperty, new Thickness(0, 5, 0, 0));
-
-            // 使用多重绑定和值转换器来确定是否显示提示文字
-            var multiBinding = new MultiBinding();
-            multiBinding.Bindings.Add(new Binding(".")); // 当前项
-            multiBinding.Bindings.Add(new Binding("CurrentPhoto") { Source = this });
-            multiBinding.Converter = new PhotoSelectedTipConverter();
-
-            selectedTipFactory.SetBinding(TextBlock.TextProperty, multiBinding);
-
-            // 组合面板
-            infoPanelFactory.AppendChild(timestampFactory);
-            infoPanelFactory.AppendChild(strokesFactory);
-            infoPanelFactory.AppendChild(selectedTipFactory);
-
-            // 组合主面板
-            stackPanelFactory.AppendChild(imageFactory);
-            stackPanelFactory.AppendChild(infoPanelFactory);
-
-            dataTemplate.VisualTree = stackPanelFactory;
-            return dataTemplate;
-        }
-
-        /// <summary>
-        /// 照片列表选择变更事件 - 修改版：支持点击已选中项返回直播
-        /// </summary>
-        private void PhotoList_SelectionChanged(object sender, SelectionChangedEventArgs e)
-        {
-            if (_isClosing) return;
-
-            // 如果没有选中任何项，直接返回
-            if (PhotoList.SelectedItem == null)
-                return;
-
-            if (PhotoList.SelectedItem is PhotoWithStrokes photoWithStrokes)
-            {
-                // 检查是否点击了已选中的照片
-                if (_currentPhoto != null && _currentPhoto == photoWithStrokes && !_isLiveMode)
-                {
-                    // 再次点击已选中的照片，返回实时模式
-                    Logger.Info("MainWindow", "再次点击已选中照片，返回实时模式");
-
-                    // 返回实时模式
-                    BackToLive_Click(sender, e);
-
-                    // 清空选中项
-                    PhotoList.SelectedItem = null;
-                    return;
-                }
-
-                // 如果是选择新的照片
-                Logger.Info("MainWindow", "选择照片查看模式");
-
-                // 保存当前实时模式的笔迹
-                _liveStrokes = new StrokeCollection(_drawingManager.GetStrokes());
-                _isLiveMode = false;
-                _currentPhoto = photoWithStrokes;
-                VideoImage.Source = photoWithStrokes.Image;
-
-                // 切换绘制管理器的StrokeCollection到照片的笔迹
-                _drawingManager.SwitchToPhotoStrokes(photoWithStrokes.Strokes);
-
-                // 重置缩放状态
-                _panZoomManager.ResetZoom();
-
-                // 释放摄像头资源
-                _cameraManager.ReleaseCameraResources();
-
-                // 触发GC释放旧资源
-                _memoryManager.TriggerMemoryCleanup();
-
-                // 更新列表显示（显示提示文字）
-                PhotoList.Items.Refresh();
-            }
-        }
-
-        /// <summary>
-        /// 返回实时模式 - 修改版：更新照片列表状态
-        /// </summary>
-        private void BackToLive_Click(object sender, RoutedEventArgs e)
-        {
-            if (_isClosing) return;
-
-            Logger.Info("MainWindow", "返回实时模式");
-
-            // 保存当前照片的笔迹
-            if (_currentPhoto != null)
-            {
-                _currentPhoto.Strokes = new StrokeCollection(_drawingManager.GetStrokes());
-            }
-
-            _isLiveMode = true;
-            _currentPhoto = null;
-
-            // 清空照片列表选中项
-            PhotoList.SelectedItem = null;
-
-            // 切换回实时模式的笔迹
-            _drawingManager.SwitchToPhotoStrokes(_liveStrokes);
-
-            // 重置缩放
-            _panZoomManager.ResetZoom();
-
-            // 重置视频帧记录状态
-            _isFirstFrameProcessed = false;
-            Logger.ResetVideoFrameLogging();
-
-            // 重启摄像头
-            _cameraManager.RestartCamera();
-
-            // 内存清理
-            _memoryManager.TriggerMemoryCleanup();
-
-            // 更新照片列表显示
-            if (PhotoList != null)
-            {
-                PhotoList.Items.Refresh();
-            }
-
-            Logger.Info("MainWindow", "已返回实时模式");
         }
 
         #endregion
@@ -1886,11 +1760,9 @@ namespace ShowWrite
                     var bitmapImage = _frameProcessor.ProcessFrameToBitmapImage(frame);
                     if (bitmapImage != null)
                     {
-                        var capturedImage = new ShowWrite.Models.CapturedImage(bitmapImage);
-                        var photo = new PhotoWithStrokes(capturedImage);
-                        photo.Strokes = new StrokeCollection(_drawingManager.GetStrokes());
-                        _photos.Insert(0, photo);
-                        _currentPhoto = photo;
+                        // 使用 PhotoPopupManager 添加照片
+                        var strokes = new StrokeCollection(_drawingManager.GetStrokes());
+                        _photoPopupManager.AddPhoto(bitmapImage, strokes);
 
                         ShowPhotoTip();
                         _memoryManager.TriggerMemoryCleanup();
@@ -2233,12 +2105,11 @@ namespace ShowWrite
                 if (processed != null)
                 {
                     var bitmapImage = _memoryManager.BitmapToBitmapImage(processed);
-                    var capturedImage = new ShowWrite.Models.CapturedImage(bitmapImage);
-                    var photo = new PhotoWithStrokes(capturedImage);
-                    // 保存当前笔迹到文档扫描照片
-                    photo.Strokes = new StrokeCollection(_drawingManager.GetStrokes());
-                    _photos.Insert(0, photo);
-                    _currentPhoto = photo;
+
+                    // 使用 PhotoPopupManager 添加文档扫描结果
+                    var strokes = new StrokeCollection(_drawingManager.GetStrokes());
+                    _photoPopupManager.AddPhoto(bitmapImage, strokes);
+
                     ShowPhotoTip();
                     // 触发内存清理
                     _memoryManager.TriggerMemoryCleanup();
@@ -2260,7 +2131,8 @@ namespace ShowWrite
         {
             if (_isClosing) return;
 
-            if (_currentPhoto == null)
+            var currentPhoto = _photoPopupManager.CurrentPhoto;
+            if (currentPhoto == null)
             {
                 MessageBox.Show("请先拍照或选择一张图片。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
@@ -2280,7 +2152,7 @@ namespace ShowWrite
                 try
                 {
                     // 保存包含批注的图片
-                    SaveImageWithInk(_currentPhoto.Image, _currentPhoto.Strokes, dlg.FileName);
+                    SaveImageWithInk(currentPhoto.Image, currentPhoto.Strokes, dlg.FileName);
                     Logger.Info("MainWindow", $"图片保存成功: {dlg.FileName}");
                     MessageBox.Show("保存成功！", "成功", MessageBoxButton.OK, MessageBoxImage.Information);
                 }
@@ -3224,10 +3096,16 @@ namespace ShowWrite
                     _touchManager = null;
                 }
 
+                // 清理照片悬浮窗资源
+                if (_photoPopupManager != null)
+                {
+                    _photoPopupManager.Dispose();
+                    _photoPopupManager = null;
+                }
+
                 // 清理数据集合
                 _photos.Clear();
                 _liveStrokes = null;
-                _currentPhoto = null;
 
                 // 清理图片资源
                 if (VideoImage.Source != null)
@@ -3280,6 +3158,9 @@ namespace ShowWrite
 
                 // 取消所有事件订阅
                 UnsubscribeAllEvents();
+
+                // 清理照片悬浮窗管理器
+                _photoPopupManager?.Dispose();
 
                 // 记录系统状态摘要
                 _logManager?.LogSystemStatus();
@@ -3449,19 +3330,13 @@ namespace ShowWrite
 
         private void TogglePhotoPanel_Click(object sender, RoutedEventArgs e)
         {
-            if (PhotoPopup.IsOpen)
-            {
-                PhotoPopup.IsOpen = false;
-            }
-            else
-            {
-                // 先打开Popup，然后在Opened事件中定位
-                PhotoPopup.IsOpen = true;
-
-                // 如果需要立即定位，可以调用RepositionPhotoPopup
-                // 但Opened事件会处理它
-            }
+            _photoPopupManager.TogglePhotoPopup();
             Logger.Debug("MainWindow", "切换照片面板显示状态");
+        }
+
+        private void BackToLive_Click(object sender, RoutedEventArgs e)
+        {
+            _photoPopupManager.BackToLive();
         }
 
         #endregion
@@ -3473,15 +3348,7 @@ namespace ShowWrite
         /// </summary>
         public PhotoWithStrokes CurrentPhoto
         {
-            get { return _currentPhoto; }
-            set
-            {
-                if (_currentPhoto != value)
-                {
-                    _currentPhoto = value;
-                    // 通知属性变更，如果需要的话
-                }
-            }
+            get { return _photoPopupManager?.CurrentPhoto; }
         }
 
         #endregion
