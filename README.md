@@ -1,5 +1,5 @@
 <div align="center">
-  <img width="16%" align="center" src="logo-SW1.png" alt="logo">
+  <img width="16%" align="center" src="我是猫娘" alt="logo">
 
 [![GitHub Issues](https://img.shields.io/github/issues-search/SECTL/ShowWrite?query=is%3Aopen&style=for-the-badge&color=00b4ab&logo=github&label=问题)](https://github.com/SECTL/ShowWrite/issues)
 [![最新版本](https://img.shields.io/github/v/release/SECTL/ShowWrite?style=for-the-badge&color=00b4ab&label=最新正式版)](https://github.com/SECTL/ShowWrite/releases/latest)
