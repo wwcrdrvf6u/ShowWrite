@@ -33,7 +33,7 @@ namespace ShowWrite
         private int _whiteboardTotalPages = 1;
         private List<List<InkStroke>> _whiteboardPages = new List<List<InkStroke>> { new List<InkStroke>() };
         private List<string?> _pageBackgrounds = new List<string?> { null };
-        private Avalonia.Controls.Shapes.Path? _nextPagePath;
+        private SvgIcon? _nextPagePath;
         private TextBlock? _nextPageText;
         private bool _pagePanelOpen = false;
         private ObservableCollection<WhiteboardPageThumbnail> _whiteboardPageThumbnails = new();
@@ -119,7 +119,7 @@ namespace ShowWrite
             StackPanel whiteboardPageButtons,
             Border pagePanel,
             TextBlock pageInfoText,
-            Avalonia.Controls.Shapes.Path nextPagePath,
+            SvgIcon nextPagePath,
             TextBlock nextPageText,
             Border importingOverlay,
             Canvas imageOverlayCanvas)
@@ -412,17 +412,17 @@ namespace ShowWrite
                 if (_isPptXmlMode)
                 {
                     // PPT XML模式下始终显示"下一页"
-                    _nextPagePath.Data = Geometry.Parse("M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z");
+                    _nextPagePath.IconName = "chevron-right";
                     _nextPageText.Text = "下一页";
                 }
                 else if (_whiteboardCurrentPage == _whiteboardTotalPages)
                 {
-                    _nextPagePath.Data = Geometry.Parse("M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z");
+                    _nextPagePath.IconName = "plus";
                     _nextPageText.Text = "加页";
                 }
                 else
                 {
-                    _nextPagePath.Data = Geometry.Parse("M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z");
+                    _nextPagePath.IconName = "chevron-right";
                     _nextPageText.Text = "下一页";
                 }
             }
@@ -502,7 +502,7 @@ namespace ShowWrite
                 int thumbWidth = 260;
                 int thumbHeight = (int)(originalBitmap.Height * ((double)thumbWidth / originalBitmap.Width));
 
-                using var resizedBitmap = originalBitmap.Resize(new SKImageInfo(thumbWidth, thumbHeight), SKFilterQuality.Medium);
+                using var resizedBitmap = originalBitmap.Resize(new SKImageInfo(thumbWidth, thumbHeight), SKSamplingOptions.Default);
                 if (resizedBitmap == null) return null;
 
                 using var image = SKImage.FromBitmap(resizedBitmap);

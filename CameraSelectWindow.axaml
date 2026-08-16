@@ -9,13 +9,15 @@
         SizeToContent="Height"
         WindowStartupLocation="CenterOwner"
         CanResize="False"
-        Background="#2D2D2D">
+        Background="{DynamicResource ThemeSurface}"
+        ExtendClientAreaToDecorationsHint="True"
+        ExtendClientAreaTitleBarHeightHint="-1">
 
     <Window.Styles>
         <Style Selector="Button.camera-btn">
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="BorderBrush" Value="#3D3D3D"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource ThemeBorder}"/>
             <Setter Property="Padding" Value="16,12"/>
             <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="CornerRadius" Value="8"/>
@@ -23,56 +25,65 @@
             <Setter Property="Margin" Value="0,4"/>
         </Style>
         <Style Selector="Button.camera-btn:pointerover">
-            <Setter Property="Background" Value="#3D3D3D"/>
-            <Setter Property="BorderBrush" Value="#0078D4"/>
-        </Style>
-        <Style Selector="Button.camera-btn:selected">
-            <Setter Property="Background" Value="#0078D4"/>
-            <Setter Property="BorderBrush" Value="#0078D4"/>
+            <Setter Property="Background" Value="{DynamicResource ThemeHoverBackground}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource ThemePrimary}"/>
         </Style>
     </Window.Styles>
 
-    <Grid Margin="20">
+    <Grid Margin="20,50,20,20">
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <TextBlock Grid.Row="0"
-                   Text="选择摄像头"
-                   FontSize="18"
-                   FontWeight="Bold"
-                   Foreground="White"
-                   Margin="0,0,0,16"/>
+        <Grid Grid.Row="0" MinHeight="60">
+            <StackPanel x:Name="CameraList" Spacing="4"/>
 
-        <StackPanel Grid.Row="1" x:Name="CameraList" Spacing="4">
-            <TextBlock x:Name="NoCameraText"
-                       Text="正在扫描摄像头..."
-                       FontSize="14"
-                       Foreground="#AAAAAA"
-                       HorizontalAlignment="Center"
-                       Margin="0,20"/>
-        </StackPanel>
+            <StackPanel x:Name="StatusPanel"
+                        Orientation="Vertical"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center"
+                        Spacing="16"
+                        Margin="0,30"
+                        IsVisible="False">
+                <Path x:Name="SpinnerPath"
+                      Width="36" Height="36"
+                      Stroke="{DynamicResource ThemePrimary}"
+                      StrokeThickness="3"
+                      StrokeLineCap="Round"
+                      Data="M18,3 A15,15 0 0 1 33,18 A15,15 0 0 1 18,33 A15,15 0 0 1 3,18"
+                      HorizontalAlignment="Center"
+                      RenderTransformOrigin="50%,50%">
+                    <Path.RenderTransform>
+                        <RotateTransform Angle="0"/>
+                    </Path.RenderTransform>
+                </Path>
+                <TextBlock x:Name="StatusText"
+                           Text="正在扫描摄像头..."
+                           FontSize="14"
+                           Foreground="{DynamicResource ThemeTextSecondary}"
+                           HorizontalAlignment="Center"/>
+            </StackPanel>
+        </Grid>
 
-        <StackPanel Grid.Row="2" 
-                    Orientation="Horizontal" 
+        <StackPanel Grid.Row="1"
+                    Orientation="Horizontal"
                     HorizontalAlignment="Right"
                     Spacing="12"
                     Margin="0,16,0,0">
             <Button x:Name="RefreshBtn"
                     Content="刷新"
                     Padding="20,8"
-                    Background="#3D3D3D"
-                    Foreground="White"
+                    Background="{DynamicResource ThemeSurfaceVariant}"
+                    Foreground="{DynamicResource ThemeTextPrimary}"
                     CornerRadius="6"
                     Cursor="Hand"
                     Click="RefreshBtn_Click"/>
             <Button x:Name="CancelBtn"
                     Content="取消"
                     Padding="20,8"
-                    Background="#3D3D3D"
-                    Foreground="White"
+                    Background="{DynamicResource ThemeSurfaceVariant}"
+                    Foreground="{DynamicResource ThemeTextPrimary}"
                     CornerRadius="6"
                     Cursor="Hand"
                     Click="CancelBtn_Click"/>

@@ -173,7 +173,7 @@ namespace ShowWrite
             _keystonePointBL = this.FindControl<Border>("KeystonePointBL");
             _toolSliderBackground = this.FindControl<Border>("ToolSliderBackground");
             _aspectRatioDropDown = this.FindControl<ComboBox>("AspectRatioDropDown");
-
+            
             if (_aspectRatioDropDown != null)
             {
                 _aspectRatioDropDown.SelectionChanged += AspectRatioDropDown_SelectionChanged;
@@ -184,7 +184,7 @@ namespace ShowWrite
             var whiteboardPageButtons = this.FindControl<StackPanel>("WhiteboardPageButtons");
             var pagePanel = this.FindControl<Border>("PagePanel");
             var pageInfoText = this.FindControl<TextBlock>("PageInfoText");
-            var nextPagePath = this.FindControl<SvgIcon>("NextPagePath");
+            var nextPagePath = this.FindControl<Avalonia.Controls.Shapes.Path>("NextPagePath");
             var nextPageText = this.FindControl<TextBlock>("NextPageText");
             var pageImportingOverlay = this.FindControl<Border>("PageImportingOverlay");
 
@@ -304,11 +304,10 @@ namespace ShowWrite
 
         private void OnZoomChanged(object? sender, ZoomChangedEventArgs e)
         {
-            // 计算 ZoomBorder 相对于 InkCanvasOverlay 的位置偏移
-            var zoomBorderPos = ZoomBorder.TranslatePoint(new Point(0, 0), InkCanvasOverlay);
-            var zoomBorderOffset = zoomBorderPos ?? new Point(0, 0);
-
-            InkCanvasOverlay.SetTransform(e.ZoomX, new Point(e.OffsetX, e.OffsetY), zoomBorderOffset);
+            // 直接使用 ZoomBorder 的 ZoomX/OffsetX/OffsetY，避免 TransformToVisual 语义不一致。
+            var zoom = ZoomBorder.ZoomX > 0 ? ZoomBorder.ZoomX : 1.0;
+            var pan = new Point(ZoomBorder.OffsetX, ZoomBorder.OffsetY);
+            InkCanvasOverlay.SetTransform(zoom, pan, new Point(0, 0));
             InkCanvasOverlay.InvalidateVisual();
 
             if (_isKeystoneCorrectionMode)
@@ -578,10 +577,10 @@ namespace ShowWrite
             base.OnSizeChanged(e);
             UpdateCursorCanvasLayout();
 
-            // 窗口大小变化时更新 InkCanvas 的坐标偏移
-            var zoomBorderPos = ZoomBorder.TranslatePoint(new Point(0, 0), InkCanvasOverlay);
-            var zoomBorderOffset = zoomBorderPos ?? new Point(0, 0);
-            InkCanvasOverlay.SetTransform(ZoomBorder.ZoomX, new Point(ZoomBorder.OffsetX, ZoomBorder.OffsetY), zoomBorderOffset);
+            // 窗口大小变化时同步 InkCanvas 的变换矩阵
+            var zoom = ZoomBorder.ZoomX > 0 ? ZoomBorder.ZoomX : 1.0;
+            var pan = new Point(ZoomBorder.OffsetX, ZoomBorder.OffsetY);
+            InkCanvasOverlay.SetTransform(zoom, pan, new Point(0, 0));
 
             if (_isPhotoAnnotationMode)
             {
@@ -2163,7 +2162,7 @@ namespace ShowWrite
             if (photoPanel == null) return;
 
             var toggleBtn = this.FindControl<Button>("TogglePhotoBtn");
-            var icon = toggleBtn?.FindControl<SvgIcon>("TogglePhotoIcon");
+            var icon = toggleBtn?.FindControl<PathShape>("TogglePhotoIcon");
             var label = toggleBtn?.FindControl<TextBlock>("TogglePhotoLabel");
 
             if (!_photoPanelOpen)
@@ -2174,7 +2173,9 @@ namespace ShowWrite
                 if (label != null) label.Text = "收回";
                 if (icon != null)
                 {
-                    icon.IconName = "chevron-right";
+                    // Simple collapse/close icon (X)
+                    var data = "M310.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-192 192c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L242.7 256L73.4 86.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l192 192z";
+                    icon.Data = Geometry.Parse(data);
                 }
             }
             else
@@ -2186,7 +2187,8 @@ namespace ShowWrite
                 if (label != null) label.Text = "照片";
                 if (icon != null)
                 {
-                    icon.IconName = "photo";
+                    var originalData = "M19 4H5a3 3 0 0 0-3 3v10a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3V7a3 3 0 0 0-3-3M5 18a1 1 0 0 1-1-1v-2.42l3.3-3.29a1 1 0 0 1 1.4 0L15.41 18Zm15-1a1 1 0 0 1-1 1h-.77l-3.81-3.83l.88-.88a1 1 0 0 1 1.4 0l3.3 3.29Zm0-3.24l-1.88-1.87a3.06 3.06 0 0 0-4.24 0l-.88.88l-2.88-2.88a3.06 3.06 0 0 0-4.24 0L4 11.76V7a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1Z";
+                    icon.Data = Geometry.Parse(originalData);
                 }
             }
         }
@@ -2302,21 +2304,42 @@ namespace ShowWrite
 
                 foreach (var stroke in photo.Strokes)
                 {
-                    if (stroke.VideoPoints == null || stroke.PointWidths == null) continue;
+                    if (stroke.VideoPoints == null || stroke.VideoPoints.Count < 1) continue;
 
-                    using var paint = new SKPaint
-                    {
-                        Style = SKPaintStyle.Fill,
-                        IsAntialias = true,
-                        Color = stroke.Color
-                    };
+                    var hasPressures = stroke.PointPressures != null
+                                       && stroke.PointPressures.Count == stroke.VideoPoints.Count;
+                    var hasWidths = stroke.PointWidths != null
+                                    && stroke.PointWidths.Count == stroke.VideoPoints.Count;
 
-                    for (int i = 0; i < stroke.VideoPoints.Count; i++)
+                    // 照片导出处于原始像素空间：stroke.VideoPoints 已是照片像素坐标，
+                    // stroke.Size 也是照片像素空间的基础宽度（DIP / zoom）。
+                    var baseWidthDip = stroke.Size;
+                    var n = stroke.VideoPoints.Count;
+                    var screenPoints = new SKPoint[n];
+                    var pressures = new float[n];
+
+                    for (int i = 0; i < n; i++)
                     {
-                        var point = stroke.VideoPoints[i];
-                        var width = stroke.PointWidths[i];
-                        canvas.DrawCircle(point.X, point.Y, width / 2, paint);
+                        screenPoints[i] = stroke.VideoPoints[i];
+                        if (hasPressures)
+                        {
+                            pressures[i] = stroke.PointPressures![i];
+                        }
+                        else if (hasWidths)
+                        {
+                            // 旧数据兼容：从每点宽度反推压感（与 InkCanvas.RenderStroke 一致）
+                            var width = stroke.PointWidths![i];
+                            pressures[i] = Math.Max(0.08f, Math.Min(1f,
+                                (width / Math.Max(baseWidthDip, 0.001f) - 0.42f) / 1.16f));
+                        }
+                        else
+                        {
+                            pressures[i] = 0.5f;
+                        }
                     }
+
+                    // 复用 ICCCE WetInkGeometryBuilder 风格的带状渲染
+                    InkCanvas.RenderRibbon(canvas, screenPoints, pressures, baseWidthDip, stroke.Color, stroke.IsEraser, ignorePressure: false);
                 }
 
                 using var image = surface.Snapshot();
@@ -2732,7 +2755,7 @@ namespace ShowWrite
                 int thumbWidth = 260;
                 int thumbHeight = (int)(originalBitmap.Height * ((double)thumbWidth / originalBitmap.Width));
 
-                using var resizedBitmap = originalBitmap.Resize(new SkiaSharp.SKImageInfo(thumbWidth, thumbHeight), SkiaSharp.SKSamplingOptions.Default);
+                using var resizedBitmap = originalBitmap.Resize(new SkiaSharp.SKImageInfo(thumbWidth, thumbHeight), SkiaSharp.SKFilterQuality.Medium);
                 if (resizedBitmap == null) return null;
 
                 using var image = SkiaSharp.SKImage.FromBitmap(resizedBitmap);

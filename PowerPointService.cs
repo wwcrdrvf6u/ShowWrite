@@ -139,11 +139,11 @@ public class PowerPointService : IDisposable
             {
                 canvas.Clear(SKColors.White);
                 using (var paint = new SKPaint())
+                using (var font = new SKFont { Size = 40 })
                 {
                     paint.Color = SKColors.Black;
-                    paint.TextSize = 40;
                     paint.IsAntialias = true;
-                    canvas.DrawText("无法渲染此幻灯片", width / 2 - 150, height / 2, paint);
+                    canvas.DrawText("无法渲染此幻灯片", width / 2 - 150, height / 2, font, paint);
                 }
             }
         }

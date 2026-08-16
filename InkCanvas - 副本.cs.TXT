@@ -1,0 +1,1611 @@
+using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Input;
+using Avalonia.Media;
+using Avalonia.Media.Imaging;
+using Avalonia.Platform;
+using Avalonia.Threading;
+using Avalonia.VisualTree;
+using SkiaSharp;
+using System;
+using System.Collections.Generic;
+
+namespace ShowWrite
+{
+    #region ICCCE 笔迹处理算法（完全照搬 Ink_Canvas.Ink.Native）
+
+    internal enum InkInputKind
+    {
+        Pen,
+        Touch,
+        Mouse
+    }
+
+    [Flags]
+    internal enum InkSampleFlags
+    {
+        None = 0,
+        InContact = 1,
+        Primary = 2,
+        Inverted = 4,
+        Eraser = 8,
+        Canceled = 16
+    }
+
+    internal readonly struct RawInkSample
+    {
+        public RawInkSample(
+            InkInputKind inputKind,
+            double x,
+            double y,
+            float pressure,
+            bool hasPressure,
+            long timestampMicroseconds,
+            InkSampleFlags flags = InkSampleFlags.None)
+        {
+            InputKind = inputKind;
+            X = x;
+            Y = y;
+            Pressure = pressure;
+            HasPressure = hasPressure;
+            TimestampMicroseconds = timestampMicroseconds;
+            Flags = flags;
+        }
+
+        public InkInputKind InputKind { get; }
+        public double X { get; }
+        public double Y { get; }
+        public float Pressure { get; }
+        public bool HasPressure { get; }
+        public long TimestampMicroseconds { get; }
+        public InkSampleFlags Flags { get; }
+    }
+
+    internal readonly struct RealInkPoint
+    {
+        public RealInkPoint(double x, double y, float pressure, long timestampMicroseconds)
+        {
+            X = x;
+            Y = y;
+            Pressure = pressure;
+            TimestampMicroseconds = timestampMicroseconds;
+        }
+
+        public double X { get; }
+        public double Y { get; }
+        public float Pressure { get; }
+        public long TimestampMicroseconds { get; }
+    }
+
+    internal sealed class InkSampleProcessorSettings
+    {
+        public bool DisablePressure { get; init; }
+        public bool EnablePressureForTouch { get; init; }
+        public bool UseVelocityBrushTip { get; init; }
+        public float VelocityBrushTipMix { get; init; }
+        public float MinimumDistanceScale { get; init; } = 0.5f;
+        public double BaseWidth { get; init; } = 2.5;
+        /// <summary>
+        /// Canvas.InkStyle: 0 点集笔锋, 1 速率笔锋, 2 关闭, 3 实时笔锋.
+        /// 0/1 在抬笔时整笔改写 Pressure；3 在书写过程中实时写入.
+        /// </summary>
+        public int InkStyle { get; init; } = 2;
+    }
+
+    internal sealed class InkSampleProcessor
+    {
+        private sealed class OneEuroFilter
+        {
+            private readonly float _minimumCutoff;
+            private readonly float _beta;
+            private readonly float _derivativeCutoff;
+            private bool _initialized;
+            private float _previousValue;
+            private float _previousDerivative;
+
+            public OneEuroFilter(float minimumCutoff, float beta, float derivativeCutoff)
+            {
+                _minimumCutoff = minimumCutoff;
+                _beta = beta;
+                _derivativeCutoff = derivativeCutoff;
+            }
+
+            public float Filter(float value, float deltaSeconds, float speed)
+            {
+                if (!_initialized)
+                {
+                    _initialized = true;
+                    _previousValue = value;
+                    return value;
+                }
+
+                var derivative = (value - _previousValue) / Math.Max(0.000001f, deltaSeconds);
+                var derivativeAlpha = Alpha(_derivativeCutoff, deltaSeconds);
+                _previousDerivative = Lerp(_previousDerivative, derivative, derivativeAlpha);
+                var valueAlpha = Alpha(_minimumCutoff + _beta * speed, deltaSeconds);
+                _previousValue = Lerp(_previousValue, value, valueAlpha);
+                return _previousValue;
+            }
+
+            private static float Alpha(float cutoff, float deltaSeconds)
+            {
+                var tau = 1f / (2f * (float)Math.PI * Math.Max(0.001f, cutoff));
+                return 1f / (1f + tau / Math.Max(0.000001f, deltaSeconds));
+            }
+
+            private static float Lerp(float from, float to, float amount) => from + (to - from) * amount;
+        }
+
+        private readonly InkSampleProcessorSettings _settings;
+        private readonly OneEuroFilter _filterX = new OneEuroFilter(1.2f, 0.015f, 1f);
+        private readonly OneEuroFilter _filterY = new OneEuroFilter(1.2f, 0.015f, 1f);
+        private readonly OneEuroFilter _filterPressure = new OneEuroFilter(1f, 0.02f, 1f);
+        private bool _hasPrevious;
+        private bool _sawPressureVariation;
+        private float _lastRawX;
+        private float _lastRawY;
+        private float _lastSmoothX;
+        private float _lastSmoothY;
+        private float _lastSmoothPressure = 0.5f;
+        private long _lastTimestampMicroseconds;
+        private float _smoothedSampleRate = 120f;
+        private RawInkSample _firstSample;
+        private bool _hasFirstSample;
+
+        public InkSampleProcessor(InkSampleProcessorSettings settings)
+        {
+            _settings = settings ?? throw new ArgumentNullException(nameof(settings));
+        }
+
+        public bool VelocityBrushTipApplied { get; private set; }
+
+        /// <summary>
+        /// True after a final (point-set / rate) brush-tip pass rewrote pressures at pen-up.
+        /// Dry stroke must honor PressureFactor when this is set.
+        /// </summary>
+        public bool FinalBrushTipApplied { get; private set; }
+
+        public void Append(IReadOnlyList<RawInkSample> samples, List<RealInkPoint> destination)
+        {
+            if (samples == null) throw new ArgumentNullException(nameof(samples));
+            if (destination == null) throw new ArgumentNullException(nameof(destination));
+
+            for (var i = 0; i < samples.Count; i++)
+                Append(samples[i], destination);
+        }
+
+        /// <summary>
+        /// Applies InkStyle 0 (point-set tip) / 1 (rate tip) to the full point list at pen-up.
+        /// Realtime velocity tip (InkStyle 3) is already applied during Append.
+        /// Mirrors the legacy dry-ink post-process so native freehand keeps the same brush tip.
+        /// </summary>
+        public void ApplyFinalBrushTip(List<RealInkPoint> points)
+        {
+            if (points == null || points.Count == 0)
+                return;
+            if (_settings.DisablePressure)
+                return;
+            // 实时笔锋已在 Append 中完成；关闭(2)不处理。
+            if (_settings.InkStyle != 0 && _settings.InkStyle != 1)
+                return;
+            if (points.Count < 2)
+                return;
+
+            if (_settings.InkStyle == 1)
+            {
+                ApplyRateBasedBrushTip(points);
+                FinalBrushTipApplied = true;
+                return;
+            }
+
+            ApplyPointSetBrushTip(points);
+            FinalBrushTipApplied = true;
+        }
+
+        private static void ApplyRateBasedBrushTip(List<RealInkPoint> points)
+        {
+            var n = points.Count - 1;
+            for (var i = 0; i <= n; i++)
+            {
+                var prev = points[Math.Max(i - 1, 0)];
+                var cur = points[i];
+                var next = points[Math.Min(i + 1, n)];
+                var speed = GetLegacyPointSpeed(prev, cur, next);
+                var pressure = RateBasedPressureFactorFromPointSpeed(speed);
+                points[i] = new RealInkPoint(cur.X, cur.Y, pressure, cur.TimestampMicroseconds);
+            }
+        }
+
+        private static void ApplyPointSetBrushTip(List<RealInkPoint> points)
+        {
+            var n = points.Count - 1;
+            if (n == 1)
+                return;
+
+            const double taperPressure = 0.1;
+            const int taperCount = 10;
+            var rewritten = new List<RealInkPoint>(points.Count);
+
+            if (n >= taperCount)
+            {
+                for (var i = 0; i < n - taperCount; i++)
+                {
+                    var p = points[i];
+                    rewritten.Add(new RealInkPoint(p.X, p.Y, 0.5f, p.TimestampMicroseconds));
+                }
+
+                for (var i = n - taperCount; i <= n; i++)
+                {
+                    var p = points[i];
+                    var pressure = (float)((0.5 - taperPressure) * (n - i) / taperCount + taperPressure);
+                    rewritten.Add(new RealInkPoint(p.X, p.Y, pressure, p.TimestampMicroseconds));
+                }
+            }
+            else
+            {
+                for (var i = 0; i <= n; i++)
+                {
+                    var p = points[i];
+                    var pressure = (float)(0.4 * (n - i) / n + taperPressure);
+                    rewritten.Add(new RealInkPoint(p.X, p.Y, pressure, p.TimestampMicroseconds));
+                }
+            }
+
+            points.Clear();
+            points.AddRange(rewritten);
+        }
+
+        /// <summary>
+        /// Legacy GetPointSpeed used by InkStyle 0/1 dry post-process
+        /// (sum of segment lengths / 20, not time-based).
+        /// </summary>
+        private static double GetLegacyPointSpeed(
+            RealInkPoint point1,
+            RealInkPoint point2,
+            RealInkPoint point3)
+        {
+            var d12 = Math.Sqrt(
+                (point1.X - point2.X) * (point1.X - point2.X)
+                + (point1.Y - point2.Y) * (point1.Y - point2.Y));
+            var d32 = Math.Sqrt(
+                (point3.X - point2.X) * (point3.X - point2.X)
+                + (point3.Y - point2.Y) * (point3.Y - point2.Y));
+            return (d12 + d32) / 20.0;
+        }
+
+        private static float RateBasedPressureFactorFromPointSpeed(double speed)
+        {
+            if (speed >= 0.25)
+                return (float)(0.5 - 0.3 * (Math.Min(speed, 1.5) - 0.3) / 1.2);
+            if (speed >= 0.05)
+                return 0.5f;
+            return (float)(0.5 + 0.4 * (0.05 - speed) / 0.05);
+        }
+
+        public void Append(RawInkSample sample, List<RealInkPoint> destination)
+        {
+            var rawX = (float)sample.X;
+            var rawY = (float)sample.Y;
+            if (!_hasPrevious)
+            {
+                _firstSample = sample;
+                _hasFirstSample = true;
+                // 落笔首点：暂用硬件压感/默认 0.5。待第二点到达后，按首段速度回修首点压感，
+                // 使落笔点与笔画主体宽度一致，避免起笔闪变。
+                var initialPressure = ResolvePressure(sample, 0, 1f / 120f, applyVelocityModulation: false);
+                destination.Add(new RealInkPoint(sample.X, sample.Y, initialPressure, sample.TimestampMicroseconds));
+                _hasPrevious = true;
+                _lastRawX = rawX;
+                _lastRawY = rawY;
+                _lastSmoothX = rawX;
+                _lastSmoothY = rawY;
+                _lastSmoothPressure = initialPressure;
+                _lastTimestampMicroseconds = sample.TimestampMicroseconds;
+                return;
+            }
+
+            var deltaSeconds = Math.Max(0.0001f, (sample.TimestampMicroseconds - _lastTimestampMicroseconds) / 1_000_000f);
+            var deltaX = rawX - _lastRawX;
+            var deltaY = rawY - _lastRawY;
+            var distance = (float)Math.Sqrt(deltaX * deltaX + deltaY * deltaY);
+            var speed = distance / deltaSeconds;
+            var sampleRate = 1f / deltaSeconds;
+            _smoothedSampleRate = _smoothedSampleRate * 0.85f + sampleRate * 0.15f;
+
+            // 首点回修：第二点到达时，按首段真实速度重算首点压感，使落笔点融入笔画。
+            if (_hasFirstSample && destination.Count == 1)
+            {
+                var firstPressure = ResolvePressure(_firstSample, speed, deltaSeconds, applyVelocityModulation: true);
+                destination[0] = new RealInkPoint(
+                    destination[0].X,
+                    destination[0].Y,
+                    firstPressure,
+                    destination[0].TimestampMicroseconds);
+                _lastSmoothPressure = firstPressure;
+                _hasFirstSample = false;
+            }
+
+            // ICCCE 中鼠标走 WPF InkCanvas 原始路径（if (false && ...)），
+            // 不经过 OneEuroFilter 平滑，坐标与鼠标光标完全一致。
+            // 仅触摸/笔输入使用 filter 减少抖动。
+            var isMouse = sample.InputKind == InkInputKind.Mouse;
+            var filteredX = isMouse ? rawX : _filterX.Filter(rawX, deltaSeconds, speed);
+            var filteredY = isMouse ? rawY : _filterY.Filter(rawY, deltaSeconds, speed);
+            var pressure = ResolvePressure(sample, speed, deltaSeconds);
+            var minimumDistance = GetMinimumDistance();
+
+            _lastRawX = rawX;
+            _lastRawY = rawY;
+            _lastTimestampMicroseconds = sample.TimestampMicroseconds;
+            if (distance < minimumDistance)
+                return;
+
+            // 鼠标直接用原始坐标；触摸/笔使用中点链减少锯齿
+            var pointX = isMouse ? filteredX : (_lastSmoothX + filteredX) * 0.5f;
+            var pointY = isMouse ? filteredY : (_lastSmoothY + filteredY) * 0.5f;
+            var pointPressure = (_lastSmoothPressure + pressure) * 0.5f;
+            destination.Add(new RealInkPoint(pointX, pointY, pointPressure, sample.TimestampMicroseconds));
+            _lastSmoothX = filteredX;
+            _lastSmoothY = filteredY;
+            _lastSmoothPressure = pressure;
+        }
+
+        private float ResolvePressure(RawInkSample sample, float speed, float deltaSeconds, bool applyVelocityModulation = true)
+        {
+            if (_settings.DisablePressure)
+                return 0.5f;
+
+            var rawPressure = sample.HasPressure ? Clamp(sample.Pressure, 0f, 1f) : 0.5f;
+            if (sample.HasPressure && Math.Abs(rawPressure - 0.5f) > 0.02f)
+                _sawPressureVariation = true;
+
+            var useHardwarePressure = sample.InputKind == InkInputKind.Pen
+                                      ? _sawPressureVariation && rawPressure > 0
+                                      : _settings.EnablePressureForTouch && _sawPressureVariation && rawPressure > 0;
+            if (!_settings.UseVelocityBrushTip)
+                return useHardwarePressure ? rawPressure : 0.5f;
+
+            var width = (float)Math.Max(0.35, _settings.BaseWidth);
+            if (useHardwarePressure)
+                width *= 0.25f + 0.75f * rawPressure;
+            var speedNormalization = 1800f + _smoothedSampleRate * 3.5f;
+            if (applyVelocityModulation)
+                width *= Clamp(1.15f - speed / speedNormalization, 0.45f, 1.25f);
+            var speedPressure = WidthToPressure(width, (float)Math.Max(0.35, _settings.BaseWidth));
+            var mix = Clamp(_settings.VelocityBrushTipMix, 0f, 1f);
+            var pressure = useHardwarePressure
+                ? (1f - mix) * rawPressure + mix * speedPressure
+                : speedPressure;
+            VelocityBrushTipApplied = true;
+            return _filterPressure.Filter(Clamp(pressure, 0.08f, 1f), deltaSeconds, speed);
+        }
+
+        private float GetMinimumDistance()
+        {
+            var baseDistance = _smoothedSampleRate > 160f ? 0.35f : _smoothedSampleRate > 90f ? 0.25f : 0.15f;
+            return baseDistance * Clamp(_settings.MinimumDistanceScale, 0f, 2f);
+        }
+
+        private static float WidthToPressure(float width, float baseWidth)
+        {
+            return Clamp((width / baseWidth - 0.42f) / 1.16f, 0.08f, 1f);
+        }
+
+        private static float Clamp(float value, float minimum, float maximum)
+        {
+            if (value < minimum) return minimum;
+            return value > maximum ? maximum : value;
+        }
+    }
+
+    #endregion
+
+    public class InkCanvas : Control, IDisposable
+    {
+        private int _videoWidth;
+        private int _videoHeight;
+
+        private bool _isPhotoMode;
+        private double _photoWidth;
+        private double _photoHeight;
+
+        private bool _isWhiteboardMode;
+        private string? _whiteboardBackgroundPath;
+        private SKBitmap? _whiteboardBackgroundBitmap;
+
+        private readonly List<InkStroke> _strokes = new();
+
+        // ICCCE 笔迹处理器状态
+        private InkSampleProcessor? _processor;
+        private readonly List<RealInkPoint> _currentRealPoints = new();
+        private List<SKPoint>? _currentVideoPoints;
+        private bool _currentIsEraser;
+        private float _currentSize;
+        private SKColor _currentColor;
+        private float _currentBaseWidthDip;
+        private const float BasePenWidthScale = 0.8f;
+
+        private List<InkStroke>? _tempStrokes;
+        private SKPoint _lastEraserPoint;
+        private bool _hasLastEraserPoint;
+
+        private WriteableBitmap? _displayBitmap;
+
+        private bool _isDrawing;
+        private bool _invalidateScheduled = false;
+
+        private Image? _videoImage;
+
+        private double _currentZoom = 1.0;
+        private Point _currentPan = new Point(0, 0);
+        private Point _zoomBorderOffset = new Point(0, 0);
+
+        private bool _isPalmEraserActive = false;
+        private bool _lastModeBeforePalmEraser = false;
+        private double _palmEraserThreshold = 5000.0;
+        private double _currentTouchArea = 0.0;
+        private bool _enablePalmEraser = true;
+        private int _palmActivationHitCount = 0;
+        private int _palmReleaseHitCount = 0;
+        private DateTime _lastPalmHitTimeUtc = DateTime.MinValue;
+        private const int PalmReleaseDebounceMs = 90;
+
+        // 橡皮光标事件
+        public event Action<Point, float, bool>? EraserCursorUpdate;
+
+        public int PenSize { get; set; } = 4;
+        public SKColor PenColor { get; set; } = SKColors.Red;
+        public int EraserSize { get; set; } = 20;
+        public PenSettings PenSettings { get; set; } = new PenSettings();
+
+        public double PalmEraserThreshold
+        {
+            get => _palmEraserThreshold;
+            set => _palmEraserThreshold = Math.Max(1000, value);
+        }
+
+        public bool EnablePalmEraser
+        {
+            get => _enablePalmEraser;
+            set => _enablePalmEraser = value;
+        }
+
+        public bool IsPalmEraserActive => _isPalmEraserActive;
+
+        public bool IsPenMode { get; private set; }
+        public bool IsEraserMode { get; private set; }
+
+        public InkCanvas()
+        {
+            ClipToBounds = false;
+            // 高 DPI 适配（已使用布局取整）
+            UseLayoutRounding = true;
+
+            // InkCanvas 作为 ZoomBorder 的兄弟节点，需要应用与 ZoomBorder 内部 child
+            // (VideoAreaContainer) 相同的 RenderTransform，使笔迹自动跟随缩放/平移，
+            // 消除手动坐标转换的累积误差。原点设为 (0,0) 与 VideoAreaContainer 一致。
+            RenderTransformOrigin = new RelativePoint(0, 0, RelativeUnit.Relative);
+
+            PointerPressed += OnPointerPressed;
+            PointerMoved += OnPointerMoved;
+            PointerReleased += OnPointerReleased;
+            PointerCaptureLost += OnPointerCaptureLost;
+        }
+
+        public void SetVideoImage(Image videoImage)
+        {
+            _videoImage = videoImage;
+        }
+
+        public void SetVideoFrame(OpenCvSharp.Mat? frame)
+        {
+            if (frame != null && !frame.Empty())
+            {
+                SetVideoSize(frame.Width, frame.Height);
+            }
+        }
+
+        public void SetTransform(double zoom, Point pan, Point zoomBorderOffset)
+        {
+            if (Math.Abs(_currentZoom - zoom) > 0.001 || _currentPan != pan || _zoomBorderOffset != zoomBorderOffset)
+            {
+                _currentZoom = zoom;
+                _currentPan = pan;
+                _zoomBorderOffset = zoomBorderOffset;
+
+                // 不设置 RenderTransform：InkCanvas 手动渲染到 WriteableBitmap，
+                // 由 Render 方法内的 SKCanvas 变换负责视频→屏幕映射。
+                // 这样 e.GetPosition(this) 返回确定性的布局坐标（=窗口坐标），
+                // ScreenToVideo 手动做 (screen - pan) / zoom 转换。
+                RenderTransform = null;
+
+                ScheduleInvalidate();
+            }
+        }
+
+        /// <summary>
+        /// 直接从参考控件（VideoAreaContainer）读取变换。
+        /// 注意：不设置 InkCanvas 的 RenderTransform，避免 GetPosition 行为不确定。
+        /// </summary>
+        public void SyncTransformFrom(Visual reference)
+        {
+            if (reference == null) return;
+
+            var oldTransform = RenderTransform;
+            RenderTransform = null;
+
+            var transform = reference.TransformToVisual(this);
+
+            if (transform.HasValue)
+            {
+                var m = transform.Value;
+                _currentZoom = Math.Abs(m.M11) > 0.001 ? m.M11 : 1.0;
+                _currentPan = new Point(m.M31, m.M32);
+                // 不设置 RenderTransform，由 Render 方法内的 SKCanvas 变换处理
+                RenderTransform = null;
+                ScheduleInvalidate();
+            }
+            else
+            {
+                RenderTransform = oldTransform;
+            }
+        }
+
+        private void SetVideoSize(int width, int height)
+        {
+            if (width <= 0 || height <= 0) return;
+            if (_videoWidth == width && _videoHeight == height) return;
+
+            _videoWidth = width;
+            _videoHeight = height;
+        }
+
+        public void SetPenMode()
+        {
+            IsPenMode = true;
+            IsEraserMode = false;
+            if (_videoImage != null)
+            {
+                _videoImage.Cursor = Cursor.Default;
+            }
+            IsHitTestVisible = true;
+            Cursor = Cursor.Default;
+            EraserCursorUpdate?.Invoke(default, 0, false);
+        }
+
+        public void SetEraserMode()
+        {
+            IsPenMode = false;
+            IsEraserMode = true;
+            if (_videoImage != null)
+            {
+                _videoImage.Cursor = Cursor.Default;
+            }
+            IsHitTestVisible = true;
+            Cursor = Cursor.Default;
+            EraserCursorUpdate?.Invoke(default, EraserSize, true);
+        }
+
+        public void SetMoveMode()
+        {
+            IsPenMode = false;
+            IsEraserMode = false;
+            if (_videoImage != null)
+            {
+                _videoImage.Cursor = Cursor.Default;
+            }
+            IsHitTestVisible = false;
+            Cursor = Cursor.Default;
+            EraserCursorUpdate?.Invoke(default, 0, false);
+        }
+
+        public void SetPenColor(SKColor color)
+        {
+            PenColor = color;
+        }
+
+        public void SetPenSize(int size)
+        {
+            PenSize = size;
+        }
+
+        public void SetPhotoMode(double photoWidth, double photoHeight)
+        {
+            _photoWidth = photoWidth;
+            _photoHeight = photoHeight;
+            _isPhotoMode = true;
+            IsHitTestVisible = IsPenMode || IsEraserMode;
+        }
+
+        public void ExitPhotoMode()
+        {
+            _isPhotoMode = false;
+            _photoWidth = 0;
+            _photoHeight = 0;
+        }
+
+        public void SetWhiteboardMode()
+        {
+            _isWhiteboardMode = true;
+        }
+
+        public void ExitWhiteboardMode()
+        {
+            _isWhiteboardMode = false;
+            _whiteboardBackgroundPath = null;
+            _whiteboardBackgroundBitmap?.Dispose();
+            _whiteboardBackgroundBitmap = null;
+        }
+
+        public void SetWhiteboardBackground(string? imagePath)
+        {
+            _whiteboardBackgroundPath = imagePath;
+            _whiteboardBackgroundBitmap?.Dispose();
+            _whiteboardBackgroundBitmap = null;
+
+            if (!string.IsNullOrEmpty(imagePath) && System.IO.File.Exists(imagePath))
+            {
+                try
+                {
+                    using var stream = System.IO.File.OpenRead(imagePath);
+                    _whiteboardBackgroundBitmap = SKBitmap.Decode(stream);
+                }
+                catch
+                {
+                    _whiteboardBackgroundBitmap = null;
+                }
+            }
+
+            InvalidateVisual();
+        }
+
+        public List<InkStroke> GetStrokes()
+        {
+            return new List<InkStroke>(_strokes);
+        }
+
+        public void SetStrokes(List<InkStroke> strokes)
+        {
+            _strokes.Clear();
+            _strokes.AddRange(strokes);
+            InvalidateVisual();
+        }
+
+        public void ClearStrokes()
+        {
+            _strokes.Clear();
+            InvalidateVisual();
+        }
+
+        /// <summary>
+        /// 将 InkCanvas 本地坐标转换为视频坐标。
+        /// e.GetPosition(this) 返回的是相对于 InkCanvas 的坐标，不受 RenderTransform 影响。
+        /// 需要应用 RenderTransform 的逆变换来获得视频坐标。
+        /// </summary>
+        private SKPoint ScreenToVideo(Point screenPoint)
+        {
+            float zoom = (float)_currentZoom;
+            if (zoom <= 0.0001f) zoom = 1f;
+            float vx = (float)((screenPoint.X - _currentPan.X) / zoom);
+            float vy = (float)((screenPoint.Y - _currentPan.Y) / zoom);
+            return new SKPoint(vx, vy);
+        }
+
+        private SKPoint VideoToScreen(SKPoint videoPoint)
+        {
+            float zoom = (float)_currentZoom;
+            float sx = (float)_currentPan.X + videoPoint.X * zoom;
+            float sy = (float)_currentPan.Y + videoPoint.Y * zoom;
+            return new SKPoint(sx, sy);
+        }
+
+        private static SKPoint ToSkPoint(Point point)
+        {
+            return new SKPoint((float)point.X, (float)point.Y);
+        }
+
+        private float GetRenderScaling()
+        {
+            return Math.Max(1.0f, (float)(TopLevel.GetTopLevel(this)?.RenderScaling ?? 1.0));
+        }
+
+        private static long GetTimestampMicroseconds()
+        {
+            return (long)(System.Diagnostics.Stopwatch.GetTimestamp() * 1_000_000.0 / System.Diagnostics.Stopwatch.Frequency);
+        }
+
+        private static InkInputKind ToInputKind(PointerType type)
+        {
+            return type switch
+            {
+                PointerType.Pen => InkInputKind.Pen,
+                PointerType.Touch => InkInputKind.Touch,
+                _ => InkInputKind.Mouse
+            };
+        }
+
+        /// <summary>
+        /// ICCCE PressureToVisualScale：压感 0.5 对应标称宽度（scale=1.0）。
+        /// 与 WetInkGeometryBuilder.ResolveRadii 完全一致。
+        /// </summary>
+        private static float PressureToVisualScale(float pressure, bool ignorePressure)
+        {
+            if (ignorePressure)
+                return 1f;
+            return Math.Max(0.22f, Math.Min(2.1f, 0.42f + 1.16f * Clamp(pressure, 0f, 1f)));
+        }
+
+        private static float Clamp(float value, float minimum, float maximum)
+        {
+            if (value < minimum) return minimum;
+            return value > maximum ? maximum : value;
+        }
+
+        private void OnPointerPressed(object? sender, PointerPressedEventArgs e)
+        {
+            if (!IsPenMode && !IsEraserMode) return;
+
+            var point = e.GetPosition(this);
+            var pointerPoint = e.GetCurrentPoint(this);
+
+            if (IsPenMode && pointerPoint.Properties.IsRightButtonPressed)
+            {
+                return;
+            }
+
+            if (TryHandlePalmEraser(e, point, isMoveEvent: false))
+                return;
+
+            _isDrawing = true;
+            e.Pointer.Capture(this);
+
+            var videoPoint = ScreenToVideo(point);
+            _currentVideoPoints = new List<SKPoint> { videoPoint };
+            _currentIsEraser = IsEraserMode;
+            _currentSize = IsEraserMode ? EraserSize : PenSize;
+            _currentColor = PenColor;
+
+            if (_currentIsEraser)
+            {
+                _lastEraserPoint = videoPoint;
+                _hasLastEraserPoint = true;
+                _tempStrokes = CloneStrokes(_strokes);
+                float eraserWidthScreen = _currentSize * 1.6f;
+                float eraserHeightScreen = _currentSize * 2.0f;
+                var eraserRectVideo = GetEraserRectInVideo(videoPoint, eraserWidthScreen, eraserHeightScreen);
+                ApplyEraserToPoint(videoPoint, eraserRectVideo);
+            }
+            else
+            {
+                // ICCCE 笔迹处理器初始化：处理器在视频坐标空间工作（和 WPF InkCanvas + RenderTransform 模型一致）
+                var renderScaling = GetRenderScaling();
+                float z = (float)_currentZoom > 0.0001f ? (float)_currentZoom : 1f;
+                // 屏幕宽度转换到视频空间（除以 zoom），canvas 渲染时会再乘 zoom 还原到屏幕尺寸
+                float baseWidthScreen = _currentSize * BasePenWidthScale / renderScaling;
+                _currentBaseWidthDip = baseWidthScreen;  // 保存屏幕空间宽度（用于 RenderWetStroke / CommitCurrentStroke）
+                float baseWidthVideo = baseWidthScreen / z;
+                var settings = BuildProcessorSettings(baseWidthVideo);
+                _processor = new InkSampleProcessor(settings);
+                _currentRealPoints.Clear();
+
+                var inputKind = ToInputKind(e.Pointer.Type);
+                var hasPressure = inputKind == InkInputKind.Pen
+                                  || (inputKind == InkInputKind.Touch && settings.EnablePressureForTouch);
+                var pressure = hasPressure ? Clamp((float)pointerPoint.Properties.Pressure, 0f, 1f) : 0.5f;
+
+                // 把视频坐标传给处理器（ICCCE WPF 也是传入 InkCanvas 局部坐标=画布坐标）
+                var sample = new RawInkSample(
+                    inputKind,
+                    videoPoint.X, videoPoint.Y,
+                    pressure, hasPressure,
+                    GetTimestampMicroseconds(),
+                    InkSampleFlags.InContact | InkSampleFlags.Primary);
+                _processor.Append(sample, _currentRealPoints);
+            }
+
+            InvalidateVisual();
+        }
+
+        private void OnPointerMoved(object? sender, PointerEventArgs e)
+        {
+            if (!IsPenMode && !IsEraserMode) return;
+
+            var currentPoint = e.GetPosition(this);
+            var videoPoint = ScreenToVideo(currentPoint);
+
+            if (IsEraserMode && !_isPalmEraserActive)
+            {
+                EraserCursorUpdate?.Invoke(currentPoint, EraserSize, true);
+            }
+
+            if (TryHandlePalmEraser(e, currentPoint, isMoveEvent: true))
+                return;
+
+            if (!_isDrawing) return;
+
+            var pointerPoint = e.GetCurrentPoint(this);
+
+            if (_currentIsEraser)
+            {
+                _currentVideoPoints!.Add(videoPoint);
+                if (_hasLastEraserPoint)
+                {
+                    float eraserWidthScreen = _currentSize * 1.6f;
+                    float eraserHeightScreen = _currentSize * 2.0f;
+                    var eraserRectVideo = GetEraserRectInVideo(videoPoint, eraserWidthScreen, eraserHeightScreen);
+                    ApplyEraserToSegment(_lastEraserPoint, videoPoint, eraserRectVideo);
+                }
+                _lastEraserPoint = videoPoint;
+                _hasLastEraserPoint = true;
+            }
+            else if (_processor != null)
+            {
+                _currentVideoPoints!.Add(videoPoint);
+                var inputKind = ToInputKind(e.Pointer.Type);
+                var hasPressure = inputKind == InkInputKind.Pen
+                                  || (inputKind == InkInputKind.Touch && _processor != null && PenSettings.EnablePressureTouchMode);
+                var pressure = hasPressure ? Clamp((float)pointerPoint.Properties.Pressure, 0f, 1f) : 0.5f;
+
+                // 把视频坐标传给处理器（与 OnPointerPressed 一致）
+                var sample = new RawInkSample(
+                    inputKind,
+                    videoPoint.X, videoPoint.Y,
+                    pressure, hasPressure,
+                    GetTimestampMicroseconds(),
+                    InkSampleFlags.InContact | InkSampleFlags.Primary);
+                _processor.Append(sample, _currentRealPoints);
+            }
+
+            InvalidateVisual();
+        }
+
+        private void OnPointerReleased(object? sender, PointerReleasedEventArgs e)
+        {
+            if (_isPalmEraserActive)
+            {
+                if (_tempStrokes != null)
+                {
+                    _strokes.Clear();
+                    _strokes.AddRange(_tempStrokes);
+                }
+                DeactivatePalmEraser();
+            }
+
+            ResetPalmDetectionState();
+
+            if (!_isDrawing) return;
+
+            if (_currentVideoPoints != null && _currentVideoPoints.Count > 1)
+            {
+                if (_currentIsEraser && _tempStrokes != null)
+                {
+                    _strokes.Clear();
+                    _strokes.AddRange(_tempStrokes);
+                }
+                else
+                {
+                    CommitCurrentStroke();
+                }
+            }
+
+            ResetCurrentInteraction();
+            InvalidateVisual();
+            e.Pointer.Capture(null);
+
+            if (IsEraserMode && EraserCursorUpdate != null)
+            {
+                var pos = e.GetPosition(this);
+                EraserCursorUpdate(pos, EraserSize, true);
+            }
+        }
+
+        private void OnPointerCaptureLost(object? sender, PointerCaptureLostEventArgs e)
+        {
+            if (_isDrawing && _currentVideoPoints != null && _currentVideoPoints.Count > 1)
+            {
+                if (_currentIsEraser && _tempStrokes != null)
+                {
+                    _strokes.Clear();
+                    _strokes.AddRange(_tempStrokes);
+                }
+                else
+                {
+                    CommitCurrentStroke();
+                }
+            }
+
+            ResetCurrentInteraction();
+            InvalidateVisual();
+        }
+
+        private InkSampleProcessorSettings BuildProcessorSettings(float baseWidthDip)
+        {
+            var settings = PenSettings;
+            var inkStyle = settings.InkStyle;
+            var useVelocity = inkStyle == 3
+                              && settings.EnableVelocityBrushTip
+                              && settings.VelocityBrushTipMix > 0
+                              && !settings.DisablePressure;
+
+            return new InkSampleProcessorSettings
+            {
+                DisablePressure = settings.DisablePressure,
+                EnablePressureForTouch = settings.EnablePressureTouchMode,
+                UseVelocityBrushTip = useVelocity,
+                VelocityBrushTipMix = (float)settings.VelocityBrushTipMix,
+                MinimumDistanceScale = (float)settings.RealtimeBrushTipMinDistanceScale,
+                BaseWidth = baseWidthDip,
+                InkStyle = inkStyle
+            };
+        }
+
+        private void CommitCurrentStroke()
+        {
+            if (_processor == null
+                || _currentRealPoints.Count < 2
+                || _currentVideoPoints == null
+                || _currentVideoPoints.Count < 2)
+            {
+                return;
+            }
+
+            // 抬笔时整笔笔锋改写（InkStyle 0 点集 / 1 速率）
+            _processor.ApplyFinalBrushTip(_currentRealPoints);
+
+            // 压感列表（与 video 点一一对应；RealPoint 数量可能少于 video 点数，
+            // 因为处理器会按最小距离过滤。使用 processor 输出的 RealPoint 列表为准。）
+            var videoPoints = new List<SKPoint>(_currentRealPoints.Count);
+            var pressures = new List<float>(_currentRealPoints.Count);
+
+            foreach (var realPoint in _currentRealPoints)
+            {
+                // _currentRealPoints 现在已是视频坐标（处理器在视频空间工作），无需二次转换
+                videoPoints.Add(new SKPoint((float)realPoint.X, (float)realPoint.Y));
+                pressures.Add(realPoint.Pressure);
+            }
+
+            if (videoPoints.Count < 2)
+                return;
+
+            // 存储基础宽度（video 空间 DIP；RenderTransform 会自动缩放到屏幕，不需要除 zoom）
+            var stroke = new InkStroke
+            {
+                VideoPoints = videoPoints,
+                PointPressures = pressures,
+                IsEraser = false,
+                Size = _currentBaseWidthDip,
+                Color = _currentColor
+            };
+
+            _strokes.Add(stroke);
+        }
+
+        private void ResetCurrentInteraction()
+        {
+            _processor = null;
+            _currentRealPoints.Clear();
+            _currentVideoPoints = null;
+            _tempStrokes = null;
+            _hasLastEraserPoint = false;
+            _isDrawing = false;
+        }
+
+        private List<InkStroke> CloneStrokes(List<InkStroke> source)
+        {
+            var result = new List<InkStroke>();
+            foreach (var stroke in source)
+            {
+                result.Add(new InkStroke
+                {
+                    VideoPoints = new List<SKPoint>(stroke.VideoPoints ?? new List<SKPoint>()),
+                    PointPressures = stroke.PointPressures != null ? new List<float>(stroke.PointPressures) : null,
+                    PointWidths = stroke.PointWidths != null ? new List<float>(stroke.PointWidths) : null,
+                    IsEraser = stroke.IsEraser,
+                    Size = stroke.Size,
+                    Color = stroke.Color
+                });
+            }
+            return result;
+        }
+
+        private SKRect GetEraserRectInVideo(SKPoint videoCenter, float eraserWidthScreen, float eraserHeightScreen)
+        {
+            // 橡皮擦尺寸是屏幕 DIP，转换到视频空间需要除以 zoom（因为 zoom 是视频到屏幕的缩放）
+            float z = (float)_currentZoom > 0.0001f ? (float)_currentZoom : 1f;
+            float halfWidthVideo = (eraserWidthScreen / 2) / z;
+            float halfHeightVideo = (eraserHeightScreen / 2) / z;
+            return new SKRect(
+                videoCenter.X - halfWidthVideo,
+                videoCenter.Y - halfHeightVideo,
+                videoCenter.X + halfWidthVideo,
+                videoCenter.Y + halfHeightVideo);
+        }
+
+        private void ApplyEraserToPoint(SKPoint eraserCenter, SKRect eraserRectVideo)
+        {
+            if (_tempStrokes == null) return;
+
+            var newStrokes = new List<InkStroke>();
+
+            foreach (var stroke in _tempStrokes)
+            {
+                if (stroke.VideoPoints == null || stroke.VideoPoints.Count < 2)
+                {
+                    newStrokes.Add(stroke);
+                    continue;
+                }
+
+                var segments = EraseStrokeWithRectangle(stroke, eraserRectVideo);
+                newStrokes.AddRange(segments);
+            }
+
+            _tempStrokes = newStrokes;
+        }
+
+        private void ApplyEraserToSegment(SKPoint from, SKPoint to, SKRect eraserRectVideo)
+        {
+            if (_tempStrokes == null) return;
+
+            float step = 1.0f;
+
+            float dx = to.X - from.X;
+            float dy = to.Y - from.Y;
+            float length = (float)Math.Sqrt(dx * dx + dy * dy);
+
+            if (length < step)
+            {
+                ApplyEraserToPoint(to, eraserRectVideo);
+                return;
+            }
+
+            int steps = (int)Math.Ceiling(length / step);
+            for (int i = 0; i <= steps; i++)
+            {
+                float t = i / (float)steps;
+                SKPoint point = new SKPoint(
+                    from.X + dx * t,
+                    from.Y + dy * t
+                );
+                ApplyEraserToPoint(point, eraserRectVideo);
+            }
+        }
+
+        private List<InkStroke> EraseStrokeWithRectangle(InkStroke stroke, SKRect rectVideo)
+        {
+            var result = new List<InkStroke>();
+            if (stroke.VideoPoints == null)
+            {
+                return result;
+            }
+
+            var videoPoints = stroke.VideoPoints;
+            var currentSegment = new List<SKPoint>();
+            var currentPressures = new List<float>();
+            var currentWidths = new List<float>();
+            var hasPressures = stroke.PointPressures != null && stroke.PointPressures.Count == videoPoints.Count;
+            var hasWidths = stroke.PointWidths != null && stroke.PointWidths.Count == videoPoints.Count;
+
+            for (int i = 0; i < videoPoints.Count; i++)
+            {
+                var point = videoPoints[i];
+                var pressure = hasPressures ? stroke.PointPressures![i] : 0.5f;
+                var width = hasWidths ? stroke.PointWidths![i] : stroke.Size;
+                float radius = width / 2;
+
+                bool intersects = CircleIntersectsRect(point, radius, rectVideo);
+
+                if (!intersects)
+                {
+                    currentSegment.Add(point);
+                    if (hasPressures) currentPressures.Add(pressure);
+                    if (hasWidths) currentWidths.Add(width);
+                }
+                else
+                {
+                    if (currentSegment.Count >= 2)
+                    {
+                        result.Add(CreateStrokeSegment(currentSegment, currentPressures, currentWidths, stroke, hasPressures, hasWidths));
+                    }
+                    currentSegment.Clear();
+                    currentPressures.Clear();
+                    currentWidths.Clear();
+                }
+            }
+
+            if (currentSegment.Count >= 2)
+            {
+                result.Add(CreateStrokeSegment(currentSegment, currentPressures, currentWidths, stroke, hasPressures, hasWidths));
+            }
+
+            return result;
+        }
+
+        private bool CircleIntersectsRect(SKPoint center, float radius, SKRect rect)
+        {
+            float closestX = Math.Max(rect.Left, Math.Min(center.X, rect.Right));
+            float closestY = Math.Max(rect.Top, Math.Min(center.Y, rect.Bottom));
+            float dx = center.X - closestX;
+            float dy = center.Y - closestY;
+            return (dx * dx + dy * dy) < radius * radius;
+        }
+
+        private InkStroke CreateStrokeSegment(List<SKPoint> points, List<float> pressures, List<float> widths, InkStroke source, bool hasPressures, bool hasWidths)
+        {
+            return new InkStroke
+            {
+                VideoPoints = new List<SKPoint>(points),
+                PointPressures = hasPressures ? new List<float>(pressures) : null,
+                PointWidths = hasWidths ? new List<float>(widths) : null,
+                IsEraser = source.IsEraser,
+                Size = source.Size,
+                Color = source.Color
+            };
+        }
+
+        public override void Render(DrawingContext context)
+        {
+            base.Render(context);
+
+            var displayWidth = (int)Bounds.Width;
+            var displayHeight = (int)Bounds.Height;
+            var renderScaling = GetRenderScaling();
+            var pixelWidth = Math.Max(1, (int)Math.Ceiling(displayWidth * renderScaling));
+            var pixelHeight = Math.Max(1, (int)Math.Ceiling(displayHeight * renderScaling));
+
+            if (displayWidth <= 0 || displayHeight <= 0) return;
+
+            if (_displayBitmap == null || _displayBitmap.PixelSize.Width != pixelWidth || _displayBitmap.PixelSize.Height != pixelHeight)
+            {
+                _displayBitmap?.Dispose();
+                _displayBitmap = new WriteableBitmap(
+                    new PixelSize(pixelWidth, pixelHeight),
+                    new Vector(96 * renderScaling, 96 * renderScaling),
+                    PixelFormat.Bgra8888,
+                    AlphaFormat.Premul);
+            }
+
+            using (var fb = _displayBitmap.Lock())
+            {
+                var info = new SKImageInfo(fb.Size.Width, fb.Size.Height, SKColorType.Bgra8888, SKAlphaType.Premul);
+                using var surface = SKSurface.Create(info, fb.Address, fb.RowBytes);
+                var canvas = surface.Canvas;
+                canvas.Clear(SKColors.Transparent);
+                canvas.Save();
+                canvas.Scale(renderScaling, renderScaling);
+
+                if (_isWhiteboardMode && _whiteboardBackgroundBitmap != null)
+                {
+                    var bounds = Bounds;
+
+                    var imgWidth = _whiteboardBackgroundBitmap.Width;
+                    var imgHeight = _whiteboardBackgroundBitmap.Height;
+
+                    var scaleX = (float)bounds.Width / imgWidth;
+                    var scaleY = (float)bounds.Height / imgHeight;
+                    var scale = Math.Min(scaleX, scaleY);
+
+                    var destWidth = imgWidth * scale;
+                    var destHeight = imgHeight * scale;
+                    var destX = ((float)bounds.Width - destWidth) / 2;
+                    var destY = ((float)bounds.Height - destHeight) / 2;
+
+                    var destRect = new SKRect(destX, destY, destX + destWidth, destY + destHeight);
+                    canvas.DrawBitmap(_whiteboardBackgroundBitmap, destRect);
+                }
+
+                // 应用视频到屏幕的缩放/平移变换（与 ZoomBorder 的 RenderTransform 一致）。
+                // 变换后，canvas 的坐标系 == 视频坐标系（和 WPF InkCanvas + RenderTransform 的效果一致）。
+                // 后续所有 VideoPoints（视频坐标）会被自动映射到正确的屏幕像素位置。
+                float zoom = (float)_currentZoom;
+                if (zoom <= 0.0001f) zoom = 1f;
+                canvas.Translate((float)_currentPan.X, (float)_currentPan.Y);
+                canvas.Scale(zoom, zoom);
+
+                if (_isDrawing && _currentIsEraser && _tempStrokes != null)
+                {
+                    RenderStrokes(canvas, _tempStrokes, zoom);
+                }
+                else
+                {
+                    RenderStrokes(canvas, _strokes, zoom);
+                }
+
+                if (_isDrawing && !_currentIsEraser && _currentRealPoints.Count >= 1)
+                {
+                    RenderWetStroke(canvas, zoom);
+                }
+                canvas.Restore();
+            }
+
+            // 目标矩形必须从 (0,0) 开始；用 Bounds 会在 Bounds.X/Y≠0 时整体偏移
+            context.DrawImage(_displayBitmap, new Rect(_displayBitmap.Size), new Rect(Bounds.Size));
+        }
+
+        private void RenderStrokes(SKCanvas canvas, List<InkStroke> strokes, float zoom)
+        {
+            // SKCanvas 已应用 zoom+pan 变换（视频→屏幕），后续绘制直接使用视频坐标即可
+            foreach (var stroke in strokes)
+            {
+                RenderStroke(canvas, stroke, zoom);
+            }
+        }
+
+        private void RenderStroke(SKCanvas canvas, InkStroke stroke, float zoom)
+        {
+            if (stroke.VideoPoints == null || stroke.VideoPoints.Count < 2) return;
+
+            var hasPressures = stroke.PointPressures != null && stroke.PointPressures.Count == stroke.VideoPoints.Count;
+            var hasWidths = stroke.PointWidths != null && stroke.PointWidths.Count == stroke.VideoPoints.Count;
+
+            // stroke.Size 是屏幕空间 DIP 宽度。canvas 已经乘了 zoom，所以需要把宽度转换到视频空间（除以 zoom），
+            // 这样 canvas 的缩放会把它重新放大到正确的屏幕尺寸。
+            float z = zoom > 0.0001f ? zoom : 1f;
+            var baseWidthDip = stroke.Size / z;
+
+            int n = stroke.VideoPoints.Count;
+            var videoPoints = new SKPoint[n];
+            var pressures = new float[n];
+
+            for (int i = 0; i < n; i++)
+            {
+                // canvas 已经应用了 zoom+pan，直接用 VideoPoints（视频坐标）即可
+                videoPoints[i] = stroke.VideoPoints[i];
+                if (hasPressures)
+                    pressures[i] = stroke.PointPressures![i];
+                else if (hasWidths)
+                    // 旧数据兼容：宽度是屏幕空间 DIP；除以 zoom 转到视频空间再反推压感
+                    pressures[i] = Math.Max(0.08f, Math.Min(1f, (stroke.PointWidths![i] / z / Math.Max(baseWidthDip, 0.001f) - 0.42f) / 1.16f));
+                else
+                    pressures[i] = 0.5f;
+            }
+
+            RenderRibbon(canvas, videoPoints, pressures, baseWidthDip, stroke.Color, stroke.IsEraser);
+        }
+
+        /// <summary>
+        /// 渲染进行中的湿墨迹。
+        /// _currentRealPoints 现在是视频坐标（处理器在视频空间工作）；canvas 已应用 zoom+pan，可直接使用。
+        /// </summary>
+        private void RenderWetStroke(SKCanvas canvas, float zoom)
+        {
+            int n = _currentRealPoints.Count;
+            if (n < 2) return;
+
+            float z = zoom > 0.0001f ? zoom : 1f;
+            var videoPoints = new SKPoint[n];
+            var pressures = new float[n];
+            for (int i = 0; i < n; i++)
+            {
+                var p = _currentRealPoints[i];
+                // RealPoint 已是视频坐标，直接使用（和 ICCCE InkCanvas 局部坐标一致）
+                videoPoints[i] = new SKPoint((float)p.X, (float)p.Y);
+                pressures[i] = p.Pressure;
+            }
+
+            // _currentBaseWidthDip 是屏幕 DIP 宽度；canvas 已应用 zoom 变换，所以转到视频空间（除以 zoom）
+            float baseWidthVideo = _currentBaseWidthDip / z;
+            RenderRibbon(canvas, videoPoints, pressures, baseWidthVideo, _currentColor, false);
+        }
+
+        /// <summary>
+        /// ICCCE WetInkGeometryBuilder 风格的带状渲染：
+        /// 根据压感计算每点半径，沿切线法线方向生成左右轮廓，填充多边形 + 端点圆帽。
+        /// </summary>
+        private void RenderRibbon(SKCanvas canvas, SKPoint[] points, float[] pressures, float baseWidthDip, SKColor color, bool isEraser)
+        {
+            RenderRibbon(canvas, points, pressures, baseWidthDip, color, isEraser, PenSettings.DisablePressure);
+        }
+
+        /// <summary>
+        /// ICCCE WetInkGeometryBuilder 风格的带状渲染（静态版本，供照片导出等场景复用）。
+        /// 根据压感计算每点半径，沿切线法线方向生成左右轮廓，填充多边形 + 端点圆帽。
+        /// </summary>
+        public static void RenderRibbon(SKCanvas canvas, SKPoint[] points, float[] pressures, float baseWidthDip, SKColor color, bool isEraser, bool ignorePressure)
+        {
+            int n = points.Length;
+            if (n == 0) return;
+
+            const float MinimumRadius = 0.175f;
+
+            using var paint = new SKPaint
+            {
+                Style = SKPaintStyle.Fill,
+                IsAntialias = true,
+                Color = color,
+                BlendMode = isEraser ? SKBlendMode.Clear : SKBlendMode.SrcOver
+            };
+
+            if (n == 1)
+            {
+                var scale = PressureToVisualScale(pressures[0], ignorePressure);
+                var radius = Math.Max(MinimumRadius, baseWidthDip * scale * 0.5f);
+                canvas.DrawCircle(points[0], radius, paint);
+                return;
+            }
+
+            // 计算每点半径
+            var radii = new float[n];
+            for (int i = 0; i < n; i++)
+            {
+                var scale = PressureToVisualScale(pressures[i], ignorePressure);
+                radii[i] = Math.Max(MinimumRadius, baseWidthDip * scale * 0.5f);
+            }
+
+            // 计算左右轮廓点（与 WetInkGeometryBuilder.Build 一致）
+            var left = new SKPoint[n];
+            var right = new SKPoint[n];
+            for (int i = 0; i < n; i++)
+            {
+                GetTangent(points, i, n, out float tx, out float ty);
+                float nx = -ty;
+                float ny = tx;
+                // 椭圆笔尖法线支撑：sqrt((rx*nx)^2 + (ry*ny)^2)，此处 rx=ry=radius
+                float support = (float)Math.Sqrt(
+                    (radii[i] * nx) * (radii[i] * nx)
+                    + (radii[i] * ny) * (radii[i] * ny));
+                left[i] = new SKPoint(points[i].X + nx * support, points[i].Y + ny * support);
+                right[i] = new SKPoint(points[i].X - nx * support, points[i].Y - ny * support);
+            }
+
+            // 构建轮廓路径：left[0..n-1] + right[n-1..0]
+            using var path = new SKPath();
+            path.MoveTo(left[0]);
+            for (int i = 1; i < n; i++)
+                path.LineTo(left[i]);
+            for (int i = n - 1; i >= 0; i--)
+                path.LineTo(right[i]);
+            path.Close();
+            canvas.DrawPath(path, paint);
+
+            // 在每个节点画圆以填补锐角拐弯处的空隙并保证笔尖圆润
+            for (int i = 0; i < n; i++)
+            {
+                canvas.DrawCircle(points[i], radii[i], paint);
+            }
+        }
+
+        /// <summary>
+        /// 计算指定索引处的切线方向（与 WetInkGeometryBuilder.GetTangent 一致）。
+        /// </summary>
+        private static void GetTangent(SKPoint[] centers, int index, int count, out float tangentX, out float tangentY)
+        {
+            SKPoint from;
+            SKPoint to;
+            if (index == 0)
+            {
+                from = centers[0];
+                to = centers[1];
+            }
+            else if (index == count - 1)
+            {
+                from = centers[index - 1];
+                to = centers[index];
+            }
+            else
+            {
+                from = centers[index - 1];
+                to = centers[index + 1];
+            }
+
+            tangentX = to.X - from.X;
+            tangentY = to.Y - from.Y;
+            var length = (float)Math.Sqrt(tangentX * tangentX + tangentY * tangentY);
+            if (length <= 0.0001f)
+            {
+                tangentX = 1;
+                tangentY = 0;
+                return;
+            }
+
+            tangentX /= length;
+            tangentY /= length;
+        }
+
+        protected override Size MeasureOverride(Size availableSize)
+        {
+            return availableSize;
+        }
+
+        public void ClearAll()
+        {
+            _strokes.Clear();
+            ResetCurrentInteraction();
+            InvalidateVisual();
+        }
+
+        public void Undo()
+        {
+            if (_strokes.Count == 0) return;
+
+            _strokes.RemoveAt(_strokes.Count - 1);
+            InvalidateVisual();
+        }
+
+        public int StrokeCount => _strokes.Count;
+
+        private double CalculateTouchArea(PointerEventArgs e)
+        {
+            try
+            {
+                var pointerPoint = e.GetCurrentPoint(this);
+                var bounds = pointerPoint.Properties.ContactRect;
+                var width = Math.Abs(bounds.Width);
+                var height = Math.Abs(bounds.Height);
+                if (width <= 0 || height <= 0)
+                {
+                    return 0;
+                }
+
+                // 电容屏用面积，红外屏更适合用等效边长（sqrt(area)）避免误放大
+                double metric = PenSettings.IsInfraredScreen
+                    ? Math.Sqrt(width * height)
+                    : width * height;
+
+                var multiplier = PenSettings.PalmTouchMultiplier;
+                if (multiplier > 0)
+                {
+                    metric *= multiplier;
+                }
+
+                return metric;
+            }
+            catch
+            {
+                return 0;
+            }
+        }
+
+        private bool TryHandlePalmEraser(PointerEventArgs e, Point screenPoint, bool isMoveEvent)
+        {
+            if (!EnablePalmEraser || !IsPenMode)
+                return false;
+
+            // 状态锁：激活后允许短时抖动，防止在手掌擦和书写之间来回抖动。
+            var touchMetric = CalculateTouchArea(e);
+            _currentTouchArea = touchMetric;
+            var nowUtc = DateTime.UtcNow;
+            var isPalmCandidate = touchMetric > PalmEraserThreshold;
+
+            if (isPalmCandidate)
+            {
+                _palmActivationHitCount++;
+                _palmReleaseHitCount = 0;
+                _lastPalmHitTimeUtc = nowUtc;
+            }
+            else
+            {
+                _palmActivationHitCount = 0;
+                _palmReleaseHitCount++;
+            }
+
+            int activationSamples = Math.Max(1, PenSettings.PalmActivationSamples);
+            int releaseSamples = Math.Max(1, PenSettings.PalmReleaseSamples);
+
+            if (!_isPalmEraserActive)
+            {
+                if (_palmActivationHitCount >= activationSamples)
+                {
+                    ActivatePalmEraser(screenPoint);
+                }
+                else
+                {
+                    return false;
+                }
+            }
+
+            var elapsedSinceLastPalmHit = (nowUtc - _lastPalmHitTimeUtc).TotalMilliseconds;
+            if (!isPalmCandidate && _palmReleaseHitCount >= releaseSamples && elapsedSinceLastPalmHit > PalmReleaseDebounceMs)
+            {
+                DeactivatePalmEraser();
+                return false;
+            }
+
+            if (_isPalmEraserActive)
+            {
+                var videoPoint = ScreenToVideo(screenPoint);
+                float eraserSize = CalculatePalmEraserSize(touchMetric);
+                ApplyEraserAtPoint(videoPoint, eraserSize);
+                EraserCursorUpdate?.Invoke(screenPoint, eraserSize, true);
+                if (isMoveEvent)
+                {
+                    InvalidateVisual();
+                }
+                return true;
+            }
+
+            return false;
+        }
+
+        private void ActivatePalmEraser(Point screenPoint)
+        {
+            if (_isPalmEraserActive) return;
+
+            _lastModeBeforePalmEraser = IsPenMode;
+            _isPalmEraserActive = true;
+            _isDrawing = false;
+            _processor = null;
+            _currentRealPoints.Clear();
+            _currentVideoPoints = null;
+            _palmReleaseHitCount = 0;
+        }
+
+        private void DeactivatePalmEraser()
+        {
+            if (!_isPalmEraserActive) return;
+
+            _isPalmEraserActive = false;
+            EraserCursorUpdate?.Invoke(default, 0, false);
+            InvalidateVisual();
+        }
+
+        private void ResetPalmDetectionState()
+        {
+            _palmActivationHitCount = 0;
+            _palmReleaseHitCount = 0;
+            _lastPalmHitTimeUtc = DateTime.MinValue;
+        }
+
+        private void ScheduleInvalidate()
+        {
+            if (_invalidateScheduled) return;
+            _invalidateScheduled = true;
+            Dispatcher.UIThread.Post(() =>
+            {
+                _invalidateScheduled = false;
+                InvalidateVisual();
+            });
+        }
+
+        private float CalculatePalmEraserSize(double touchArea)
+        {
+            double baseSize = Math.Sqrt(touchArea) * 0.1;
+            return Math.Max(20, (float)baseSize);
+        }
+
+        private void ApplyEraserAtPoint(SKPoint videoPoint, float eraserSize)
+        {
+            if (_strokes.Count == 0) return;
+
+            if (_tempStrokes == null)
+            {
+                _tempStrokes = CloneStrokes(_strokes);
+            }
+
+            float eraserWidthScreen = eraserSize * 1.6f;
+            float eraserHeightScreen = eraserSize * 2.0f;
+            var eraserRectVideo = GetEraserRectInVideo(videoPoint, eraserWidthScreen, eraserHeightScreen);
+
+            var newStrokes = new List<InkStroke>();
+            foreach (var stroke in _tempStrokes)
+            {
+                if (stroke.VideoPoints == null || stroke.VideoPoints.Count < 2)
+                {
+                    newStrokes.Add(stroke);
+                    continue;
+                }
+
+                var segments = EraseStrokeWithRectangle(stroke, eraserRectVideo);
+                newStrokes.AddRange(segments);
+            }
+
+            _tempStrokes = newStrokes;
+        }
+
+        public void Dispose()
+        {
+            _displayBitmap?.Dispose();
+        }
+    }
+
+    public class InkStroke
+    {
+        public List<SKPoint>? VideoPoints { get; set; }
+        /// <summary>每点压感 (0-1)，ICCCE 风格。新笔画使用此字段。</summary>
+        public List<float>? PointPressures { get; set; }
+        /// <summary>旧版每点宽度（视频空间），仅用于兼容旧数据反序列化。</summary>
+        public List<float>? PointWidths { get; set; }
+        public bool IsEraser { get; set; }
+        public float Size { get; set; }
+        public SKColor Color { get; set; }
+    }
+}

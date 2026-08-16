@@ -11,9 +11,6 @@
         WindowState="FullScreen"
         Background="{DynamicResource ThemeBackground}"
         WindowDecorations="None"
-        ExtendClientAreaToDecorationsHint="True"
-
-        ExtendClientAreaTitleBarHeightHint="-1"
         CanResize="False"
         Opened="Window_Opened"
         Closing="Window_Closing">
@@ -29,6 +26,12 @@
         </Style>
         <Style Selector="ToggleButton:checked Path.icon-path">
             <Setter Property="Fill" Value="White"/>
+        </Style>
+        <Style Selector="local|SvgIcon">
+            <Setter Property="IconBrush" Value="{DynamicResource ThemeIconColor}"/>
+        </Style>
+        <Style Selector="ToggleButton:checked local|SvgIcon">
+            <Setter Property="IconBrush" Value="White"/>
         </Style>
         <Style Selector="Border.no-background">
             <Setter Property="Background" Value="Transparent"/>
@@ -141,6 +144,17 @@
         </Style>
         <Style Selector="Button.menu-btn">
             <Setter Property="FontFamily" Value="avares://ShowWrite/font/HarmonyOS_Sans_SC_Medium.ttf#HarmonyOS Sans SC"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="HorizontalAlignment" Value="Stretch"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+        </Style>
+        <Style Selector="Button.menu-btn:pointerover">
+            <Setter Property="Background" Value="{DynamicResource ThemeHoverBackground}"/>
+        </Style>
+        <Style Selector="Button.menu-btn:pressed">
+            <Setter Property="Background" Value="{DynamicResource ThemePressedBackground}"/>
         </Style>
     </Window.Styles>
 
@@ -489,9 +503,8 @@
                                     Classes="nav-btn"
                                     Click="SavePhotoBtn_Click">
                                 <StackPanel Orientation="Horizontal" Spacing="8">
-                                    <Viewbox Width="18" Height="18">
-                                        <Path Classes="icon-path" Data="M433.941 129.941l-83.882-83.882A48 48 0 0 0 316.118 32H48C21.49 32 0 53.49 0 80v352c0 26.51 21.49 48 48 48h352c26.51 0 48-21.49 48-48V163.882a48 48 0 0 0-14.059-33.941zM224 416c-35.346 0-64-28.654-64-64 0-35.346 28.654-64 64-64s64 28.654 64 64c0 35.346-28.654 64-64 64zm96-304.52V212c0 6.627-5.373 12-12 12H76c-6.627 0-12-5.373-12-12V108c0-6.627 5.373-12 12-12h228.52c3.183 0 6.235 1.264 8.485 3.515l3.48 3.48A11.996 11.996 0 0 1 320 111.48z"/>
-                                    </Viewbox>
+                                    <local:SvgIcon Width="18" Height="18"
+                                                   IconName="floppy"/>
                                     <TextBlock Text="保存照片" FontSize="12" Foreground="{DynamicResource ThemeTextSecondary}" VerticalAlignment="Center"/>
                                 </StackPanel>
                             </Button>
@@ -500,9 +513,8 @@
                                     Classes="nav-btn"
                                     Click="ImportPhotoBtn_Click">
                                 <StackPanel Orientation="Horizontal" Spacing="8">
-                                    <Viewbox Width="18" Height="18">
-                                        <Path Classes="icon-path" Data="M432 320h-32a16 16 0 0 0-16 16v112H64V128h144a16 16 0 0 0 16-16V80a16 16 0 0 0-16-16H48a48 48 0 0 0-48 48v352a48 48 0 0 0 48 48h352a48 48 0 0 0 48-48V336a16 16 0 0 0-16-16zM488 0H360c-21.37 0-32.05 25.91-17 41l35.73 35.73L135 320.37a24 24 0 0 0 0 34L157.67 377a24 24 0 0 0 34 0l243.61-243.68L471 169c15 15 41 4.5 41-17V24a24 24 0 0 0-24-24z"/>
-                                    </Viewbox>
+                                    <local:SvgIcon Width="18" Height="18"
+                                                   IconName="import"/>
                                     <TextBlock Text="导入" FontSize="12" Foreground="{DynamicResource ThemeTextSecondary}" VerticalAlignment="Center"/>
                                 </StackPanel>
                             </Button>
@@ -542,13 +554,13 @@
                IsLightDismissEnabled="True"
                IsOpen="False">
             <Border Background="{DynamicResource ThemeSurface}" CornerRadius="8" Padding="4" BorderBrush="{DynamicResource ThemeSurfaceVariant}" BorderThickness="1">
-                <StackPanel>
-                    <Button Content="切换摄像头" Click="SwitchCamera_Click" Classes="menu-btn" Background="Transparent" Foreground="{DynamicResource ThemeTextPrimary}" HorizontalContentAlignment="Center" Padding="20,12"/>
-                    <Button Content="梯形校正" Click="KeystoneCorrection_Click" Classes="menu-btn" Background="Transparent" Foreground="{DynamicResource ThemeTextPrimary}" HorizontalContentAlignment="Center" Padding="20,12"/>
-                    <Button Content="清除矫正" Click="ClearKeystone_Click" Classes="menu-btn" Background="Transparent" Foreground="{DynamicResource ThemeTextPrimary}" HorizontalContentAlignment="Center" Padding="20,12"/>
-					<Button Content="闪记" Click="OpenRandomNoteWindow_Click" Classes="menu-btn" Background="Transparent" Foreground="{DynamicResource ThemeTextPrimary}" HorizontalContentAlignment="Center" Padding="20,12"/>
-					<Button Content="设置" Click="OpenSettings_Click" Classes="menu-btn" Background="Transparent" Foreground="{DynamicResource ThemeTextPrimary}" HorizontalContentAlignment="Center" Padding="20,12"/>
-                    <Button Content="退出" Click="Exit_Click" Classes="menu-btn" Background="Transparent" Foreground="{DynamicResource ThemeTextPrimary}" HorizontalContentAlignment="Center" Padding="20,12"/>
+                <StackPanel HorizontalAlignment="Stretch">
+                    <Button Content="切换摄像头" Click="SwitchCamera_Click" Classes="menu-btn" Foreground="{DynamicResource ThemeTextPrimary}" Padding="20,12"/>
+                    <Button Content="梯形校正" Click="KeystoneCorrection_Click" Classes="menu-btn" Foreground="{DynamicResource ThemeTextPrimary}" Padding="20,12"/>
+                    <Button Content="清除矫正" Click="ClearKeystone_Click" Classes="menu-btn" Foreground="{DynamicResource ThemeTextPrimary}" Padding="20,12"/>
+					<Button Content="闪记" Click="OpenRandomNoteWindow_Click" Classes="menu-btn" Foreground="{DynamicResource ThemeTextPrimary}" Padding="20,12"/>
+					<Button Content="设置" Click="OpenSettings_Click" Classes="menu-btn" Foreground="{DynamicResource ThemeTextPrimary}" Padding="20,12"/>
+                    <Button Content="退出" Click="Exit_Click" Classes="menu-btn" Foreground="{DynamicResource ThemeTextPrimary}" Padding="20,12"/>
                 </StackPanel>
             </Border>
         </Popup>
@@ -830,9 +842,8 @@
                                         <RowDefinition Height="*"/>
                                         <RowDefinition Height="Auto"/>
                                     </Grid.RowDefinitions>
-                                    <Viewbox Grid.Row="0" Width="28" Height="28" HorizontalAlignment="Center">
-                                        <Path Classes="icon-path" Data="M4 6a1 1 0 0 1 1-1h14a1 1 0 1 1 0 2H5a1 1 0 0 1-1-1m0 12a1 1 0 0 1 1-1h14a1 1 0 1 1 0 2H5a1 1 0 0 1-1-1m1-7a1 1 0 1 0 0 2h8a1 1 0 1 0 0-2z"/>
-                                    </Viewbox>
+                                    <local:SvgIcon Grid.Row="0" Width="28" Height="28" HorizontalAlignment="Center"
+                                                   IconName="more"/>
                                     <TextBlock Grid.Row="1" Text="更多" FontSize="10" Foreground="{DynamicResource ThemeTextSecondary}" HorizontalAlignment="Center" Margin="0,4,0,0" Classes="button-text-label"/>
                                 </Grid>
                             </Button>
@@ -847,9 +858,8 @@
                                         <RowDefinition Height="*"/>
                                         <RowDefinition Height="Auto"/>
                                     </Grid.RowDefinitions>
-                                    <Viewbox Grid.Row="0" Width="28" Height="28" HorizontalAlignment="Center">
-                                        <Path Classes="icon-path" Data="m15.989 4l-1.503 1.5H5.25l-.144.006A1.75 1.75 0 0 0 3.5 7.25v2.24l2.61-1.64a2.25 2.25 0 0 1 3.008.569l.095.139a2.25 2.25 0 0 1 .163 2.082l-.079.166l-1.208 2.286a.75.75 0 0 0 .933 1.05l.098-.046l1.76-.993a.75.75 0 0 1 .826 1.247l-.085.057l-1.765.996a2.25 2.25 0 0 1-3.163-2.867l.07-.145l1.208-2.286a.75.75 0 0 0-.964-1.037l-.098.052L3.5 11.262v5.493c0 .966.784 1.75 1.75 1.75h13.5a1.75 1.75 0 0 0 1.75-1.75V9.443L22 7.946v8.809a3.25 3.25 0 0 1-3.25 3.25H5.25A3.25 3.25 0 0 1 2 16.755V7.25a3.25 3.25 0 0 1 3.066-3.245L5.25 4zm5.186-.455l.13.12l.121.13a2.27 2.27 0 0 1-.121 3.08l-4.281 4.273a2.25 2.25 0 0 1-.943.562l-2.327.7a1 1 0 0 1-1.24-1.265l.739-2.295c.11-.34.299-.65.552-.903l4.29-4.283a2.27 2.27 0 0 1 3.08-.12m-2.02 1.18l-4.29 4.284a.75.75 0 0 0-.184.3l-.447 1.39l1.416-.425a.75.75 0 0 0 .314-.188l4.28-4.273l.075-.086a.769.769 0 0 0-1.163-1.002"/>
-                                    </Viewbox>
+                                    <local:SvgIcon Grid.Row="0" Width="28" Height="28" HorizontalAlignment="Center"
+                                                   IconName="chalkboard"/>
                                     <TextBlock Grid.Row="1" Text="版中版" FontSize="10" Foreground="{DynamicResource ThemeTextSecondary}" HorizontalAlignment="Center" Margin="0,4,0,0" Classes="button-text-label"/>
                                 </Grid>
                             </Button>
@@ -863,9 +873,8 @@
                                         <RowDefinition Height="*"/>
                                         <RowDefinition Height="Auto"/>
                                     </Grid.RowDefinitions>
-                                    <Viewbox Grid.Row="0" Width="28" Height="28" HorizontalAlignment="Center">
-                                        <Path Classes="icon-path" Data="M18 3.25H6A2.75 2.75 0 0 0 3.25 6v6a.75.75 0 0 0 1.5 0V6A1.25 1.25 0 0 1 6 4.75h12A1.25 1.25 0 0 1 19.25 6v12A1.25 1.25 0 0 1 18 19.25h-6a.75.75 0 0 0 0 1.5h6A2.75 2.75 0 0 0 20.75 18V6A2.75 2.75 0 0 0 18 3.25M11.21 13.19a.8.8 0 0 0 .29.06h4a.75.75 0 0 0 0-1.5h-2.19l3.22-3.22a.75.75 0 0 0-1.06-1.06l-3.22 3.22V8.5a.75.75 0 0 0-1.5 0v4a.8.8 0 0 0 .06.29a.7.7 0 0 0 .4.4M8 14.25H5A1.76 1.76 0 0 0 3.25 16v3A1.76 1.76 0 0 0 5 20.75h3A1.76 1.76 0 0 0 9.75 19v-3A1.76 1.76 0 0 0 8 14.25M8.25 19a.25.25 0 0 1-.25.25H5a.25.25 0 0 1-.25-.25v-3a.25.25 0 0 1 .25-.25h3a.25.25 0 0 1 .25.25Z"/>
-                                    </Viewbox>
+                                    <local:SvgIcon Grid.Row="0" Width="28" Height="28" HorizontalAlignment="Center"
+                                                   IconName="minimize"/>
                                     <TextBlock Grid.Row="1" Text="最小化" FontSize="10" Foreground="{DynamicResource ThemeTextSecondary}" HorizontalAlignment="Center" Margin="0,4,0,0" Classes="button-text-label"/>
                                 </Grid>
                             </Button>
@@ -902,9 +911,8 @@
                                         <RowDefinition Height="*"/>
                                         <RowDefinition Height="Auto"/>
                                     </Grid.RowDefinitions>
-                                    <Viewbox Grid.Row="0" Width="28" Height="28" HorizontalAlignment="Center">
-                                        <Path Classes="icon-path" Data="M6 12h12v2H6z"/>
-                                    </Viewbox>
+                                    <local:SvgIcon Grid.Row="0" Width="28" Height="28" HorizontalAlignment="Center"
+                                                   IconName="minimize"/>
                                     <TextBlock Grid.Row="1" Text="最小化" FontSize="10" Foreground="{DynamicResource ThemeTextSecondary}" HorizontalAlignment="Center" Margin="0,4,0,0" Classes="button-text-label"/>
                                 </Grid>
                             </Button>
@@ -1024,9 +1032,8 @@
                                         <RowDefinition Height="*"/>
                                         <RowDefinition Height="Auto"/>
                                     </Grid.RowDefinitions>
-                                    <Viewbox Grid.Row="0" Width="28" Height="28" HorizontalAlignment="Center">
-                                        <Path Classes="icon-path" Data="M302.189 329.126H196.105l55.831 135.993c3.889 9.428-.555 19.999-9.444 23.999l-49.165 21.427c-9.165 4-19.443-.571-23.332-9.714l-53.053-129.136l-86.664 89.138C18.729 472.71 0 463.554 0 447.977V18.299C0 1.899 19.921-6.096 30.277 5.443l284.412 292.542c11.472 11.179 3.007 31.141-12.5 31.141"/>
-                                    </Viewbox>
+                                    <local:SvgIcon Grid.Row="0" Width="28" Height="28" HorizontalAlignment="Center"
+                                                   IconName="pointer"/>
                                     <TextBlock Grid.Row="1" Text="移动" FontSize="10" Foreground="{DynamicResource ThemeTextSecondary}" HorizontalAlignment="Center" Margin="0,4,0,0" Classes="button-text-label"/>
                                 </Grid>
                             </ToggleButton>
@@ -1041,9 +1048,8 @@
                                         <RowDefinition Height="*"/>
                                         <RowDefinition Height="Auto"/>
                                     </Grid.RowDefinitions>
-                                    <Viewbox Grid.Row="0" Width="28" Height="28" HorizontalAlignment="Center">
-                                        <Path Classes="icon-path" Data="M4.2 20.975q-.525.125-.913-.262t-.262-.913l.875-4.25l4.55 4.55zm5.875-2.1l-4.95-4.95L15.45 3.6q.575-.575 1.425-.575T18.3 3.6l2.1 2.1q.575.575.575 1.425T20.4 8.55z"/>
-                                    </Viewbox>
+                                    <local:SvgIcon Grid.Row="0" Width="28" Height="28" HorizontalAlignment="Center"
+                                                   IconName="pencil"/>
                                     <TextBlock Grid.Row="1" Text="画笔" FontSize="10" Foreground="{DynamicResource ThemeTextSecondary}" HorizontalAlignment="Center" Margin="0,4,0,0" Classes="button-text-label"/>
                                 </Grid>
                             </ToggleButton>
@@ -1058,9 +1064,8 @@
                                         <RowDefinition Height="*"/>
                                         <RowDefinition Height="Auto"/>
                                     </Grid.RowDefinitions>
-                                    <Viewbox Grid.Row="0" Width="28" Height="28" HorizontalAlignment="Center">
-                                        <Path Classes="icon-path" Data="M3.121 17.85a3 3 0 0 1 0-4.243l7.071-7.072l8.486 8.486l-3.243 3.242H20a1 1 0 1 1 0 2H6.778a3 3 0 0 1-2.121-.878L3.12 17.849zm16.97-4.243l1.415-1.415a3 3 0 0 0 0-4.242l-4.243-4.243a3 3 0 0 0-4.242 0l-1.414 1.414z"/>
-                                    </Viewbox>
+                                    <local:SvgIcon Grid.Row="0" Width="28" Height="28" HorizontalAlignment="Center"
+                                                   IconName="eraser"/>
                                     <TextBlock Grid.Row="1" Text="橡皮擦" FontSize="10" Foreground="{DynamicResource ThemeTextSecondary}" HorizontalAlignment="Center" Margin="0,4,0,0" Classes="button-text-label"/>
                                 </Grid>
                             </ToggleButton>
@@ -1076,9 +1081,8 @@
                                         <RowDefinition Height="*"/>
                                         <RowDefinition Height="Auto"/>
                                     </Grid.RowDefinitions>
-                                    <Viewbox Grid.Row="0" Width="28" Height="28" HorizontalAlignment="Center">
-                                        <Path Classes="icon-path" Data="M16 3C12 3 8.4 4.8 6 7.7V4H4v8h8v-2H6.8c2-3 5.3-5 9.2-5c6.1 0 11 4.9 11 11s-4.9 11-11 11S5 22.1 5 16H3c0 7.2 5.8 13 13 13s13-5.8 13-13S23.2 3 16 3"/>
-                                    </Viewbox>
+                                    <local:SvgIcon Grid.Row="0" Width="28" Height="28" HorizontalAlignment="Center"
+                                                   IconName="undo"/>
                                     <TextBlock Grid.Row="1" Text="撤销" FontSize="10" Foreground="{DynamicResource ThemeTextSecondary}" HorizontalAlignment="Center" Margin="0,4,0,0" Classes="button-text-label"/>
                                 </Grid>
                             </Button>
@@ -1092,9 +1096,8 @@
                                         <RowDefinition Height="*"/>
                                         <RowDefinition Height="Auto"/>
                                     </Grid.RowDefinitions>
-                                    <Viewbox Grid.Row="0" Width="28" Height="28" HorizontalAlignment="Center">
-                                        <Path Classes="icon-path" Data="M7 4a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v2h4a1 1 0 1 1 0 2h-1.069l-.867 12.142A2 2 0 0 1 17.069 22H6.93a2 2 0 0 1-1.995-1.858L4.07 8H3a1 1 0 1 1 0-2h4zm2 2h6V4H9zM6.074 8l.857 12H17.07l.857-12zM10 10a1 1 0 0 1 1 1v6a1 1 0 0 1-2 0v-6a1 1 0 0 1 1-1m4 0a1 1 0 0 1 1 1v6a1 1 0 0 1-2 0v-6a1 1 0 0 1 1-1"/>
-                                    </Viewbox>
+                                    <local:SvgIcon Grid.Row="0" Width="28" Height="28" HorizontalAlignment="Center"
+                                                   IconName="trash"/>
                                     <TextBlock Grid.Row="1" Text="清屏" FontSize="10" Foreground="{DynamicResource ThemeTextSecondary}" HorizontalAlignment="Center" Margin="0,4,0,0" Classes="button-text-label"/>
                                 </Grid>
                             </Button>
@@ -1111,9 +1114,8 @@
                                         <RowDefinition Height="*"/>
                                         <RowDefinition Height="Auto"/>
                                     </Grid.RowDefinitions>
-                                    <Viewbox Grid.Row="0" Width="28" Height="28" HorizontalAlignment="Center">
-                                        <Path Classes="icon-path" Data="M19 6.5h-1.28l-.32-1a3 3 0 0 0-2.84-2H9.44A3 3 0 0 0 6.6 5.55l-.32 1H5a3 3 0 0 0-3 3v8a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3v-8a3 3 0 0 0-3-3.05m1 11a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-8a1 1 0 0 1 1-1h2a1 1 0 0 0 1-.68l.54-1.64a1 1 0 0 1 .95-.68h5.12a1 1 0 0 1 .95.68l.54 1.64a1 1 0 0 0 .9.68h2a1 1 0 0 1 1 1Zm-8-9a4 4 0 1 0 4 4a4 4 0 0 0-4-4m0 6a2 2 0 1 1 2-2a2 2 0 0 1-2 2"/>
-                                    </Viewbox>
+                                    <local:SvgIcon Grid.Row="0" Width="28" Height="28" HorizontalAlignment="Center"
+                                                   IconName="camera"/>
                                     <TextBlock Grid.Row="1" Text="拍照" FontSize="10" Foreground="{DynamicResource ThemeTextSecondary}" HorizontalAlignment="Center" Margin="0,4,0,0" Classes="button-text-label"/>
                                 </Grid>
                             </Button>
@@ -1128,9 +1130,8 @@
                                         <RowDefinition Height="*"/>
                                         <RowDefinition Height="Auto"/>
                                     </Grid.RowDefinitions>
-                                    <Viewbox Grid.Row="0" Width="28" Height="28" HorizontalAlignment="Center">
-                                        <Path Classes="icon-path" Data="M4 22v-5h2v3h12v-3h2v5zm0-11V2h10l6 6v3h-2V9h-5V4H6v7zm-3 4v-2h22v2zm11 2"/>
-                                    </Viewbox>
+                                    <local:SvgIcon Grid.Row="0" Width="28" Height="28" HorizontalAlignment="Center"
+                                                   IconName="scan"/>
                                     <TextBlock Grid.Row="1" Text="扫描" FontSize="10" Foreground="{DynamicResource ThemeTextSecondary}" HorizontalAlignment="Center" Margin="0,4,0,0" Classes="button-text-label"/>
                                 </Grid>
                             </Button>
@@ -1145,9 +1146,8 @@
                                         <RowDefinition Height="*"/>
                                         <RowDefinition Height="Auto"/>
                                     </Grid.RowDefinitions>
-                                    <Viewbox Grid.Row="0" Width="28" Height="28" HorizontalAlignment="Center" VerticalAlignment="Center">
-                                        <Path Classes="icon-path" Fill="{x:Null}" Stroke="{DynamicResource ThemeIconColor}" StrokeThickness="2" Data="M4 21v-7m0-4V3m8 18v-9m0-4V3m8 18v-5m0-4V3M1 14h6m2-6h6m2 8h6Z"/>
-                                    </Viewbox>
+                                    <local:SvgIcon Grid.Row="0" Width="28" Height="28" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                   IconName="adjustments"/>
                                     <TextBlock Grid.Row="1" Text="画面调节" FontSize="10" Foreground="{DynamicResource ThemeTextSecondary}" HorizontalAlignment="Center" Margin="0,4,0,0" Classes="button-text-label"/>
                                 </Grid>
                             </Button>
@@ -1179,9 +1179,8 @@
                                         <RowDefinition Height="*"/>
                                         <RowDefinition Height="Auto"/>
                                     </Grid.RowDefinitions>
-                                    <Viewbox Grid.Row="0" Width="28" Height="28" HorizontalAlignment="Center">
-                                        <Path x:Name="TogglePhotoIcon" Classes="icon-path" Data="M19 4H5a3 3 0 0 0-3 3v10a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3V7a3 3 0 0 0-3-3M5 18a1 1 0 0 1-1-1v-2.42l3.3-3.29a1 1 0 0 1 1.4 0L15.41 18Zm15-1a1 1 0 0 1-1 1h-.77l-3.81-3.83l.88-.88a1 1 0 0 1 1.4 0l3.3 3.29Zm0-3.24l-1.88-1.87a3.06 3.06 0 0 0-4.24 0l-.88.88l-2.88-2.88a3.06 3.06 0 0 0-4.24 0L4 11.76V7a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1Z"/>
-                                    </Viewbox>
+                                    <local:SvgIcon x:Name="TogglePhotoIcon" Grid.Row="0" Width="28" Height="28" HorizontalAlignment="Center"
+                                                   IconName="photo"/>
                                     <TextBlock x:Name="TogglePhotoLabel" Grid.Row="1" Text="照片" FontSize="10" Foreground="{DynamicResource ThemeTextSecondary}" HorizontalAlignment="Center" Margin="0,4,0,0" Classes="button-text-label"/>
                                 </Grid>
                             </Button>
@@ -1196,9 +1195,8 @@
                                         <RowDefinition Height="*"/>
                                         <RowDefinition Height="Auto"/>
                                     </Grid.RowDefinitions>
-                                    <Viewbox Grid.Row="0" Width="28" Height="28" HorizontalAlignment="Center">
-                                        <Path Classes="icon-path" Data="M640 384v64H448a128 128 0 0 0-128 128v128a128 128 0 0 0 128 128h320a128 128 0 0 0 128-128V576a128 128 0 0 0-64-110.848V394.88c74.56 26.368 128 97.472 128 181.056v128a192 192 0 0 1-192 192H448a192 192 0 0 1-192-192V576a192 192 0 0 1 192-192zM384 640v-64h192a128 128 0 0 0 128-128V320a128 128 0 0 0-128-128H256a128 128 0 0 0-128 128v128a128 128 0 0 0 64 110.848v70.272A192.06 192.06 0 0 1 64 448V320a192 192 0 0 1 192-192h320a192 192 0 0 1 192 192v128a192 192 0 0 1-192 192z"/>
-                                    </Viewbox>
+                                    <local:SvgIcon Grid.Row="0" Width="28" Height="28" HorizontalAlignment="Center"
+                                                   IconName="link"/>
                                     <TextBlock Grid.Row="1" Text="连接设备" FontSize="10" Foreground="{DynamicResource ThemeTextSecondary}" HorizontalAlignment="Center" Margin="0,4,0,0" Classes="button-text-label"/>
                                 </Grid>
                             </Button>
@@ -1219,9 +1217,8 @@
                                         <RowDefinition Height="*"/>
                                         <RowDefinition Height="Auto"/>
                                     </Grid.RowDefinitions>
-                                    <Viewbox Grid.Row="0" Width="24" Height="24" HorizontalAlignment="Center">
-                                        <Path Classes="icon-path" Data="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/>
-                                    </Viewbox>
+                                    <local:SvgIcon Grid.Row="0" Width="24" Height="24" HorizontalAlignment="Center"
+                                                   IconName="chevron-left"/>
                                     <TextBlock Grid.Row="1" Text="上一页" FontSize="9" Foreground="{DynamicResource ThemeTextSecondary}" HorizontalAlignment="Center" Margin="0,4,0,0" Classes="button-text-label"/>
                                 </Grid>
                             </Button>
@@ -1253,9 +1250,8 @@
                                         <RowDefinition Height="*"/>
                                         <RowDefinition Height="Auto"/>
                                     </Grid.RowDefinitions>
-                                    <Viewbox Grid.Row="0" Width="24" Height="24" HorizontalAlignment="Center">
-                                        <Path x:Name="NextPagePath" Classes="icon-path" Data="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/>
-                                    </Viewbox>
+                                    <local:SvgIcon x:Name="NextPagePath" Grid.Row="0" Width="24" Height="24" HorizontalAlignment="Center"
+                                                   IconName="chevron-right"/>
                                     <TextBlock x:Name="NextPageText" Grid.Row="1" Text="下一页" FontSize="9" Foreground="{DynamicResource ThemeTextSecondary}" HorizontalAlignment="Center" Margin="0,4,0,0" Classes="button-text-label"/>
                                 </Grid>
                             </Button>

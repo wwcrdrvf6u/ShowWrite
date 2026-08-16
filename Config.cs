@@ -47,6 +47,7 @@ namespace ShowWrite
     public class Config
     {
         public List<int> AvailableCameraIndices { get; set; } = new();
+        public Dictionary<int, string> AvailableCameraNames { get; set; } = new();
         public DateTime LastScanTime { get; set; }
         public int CurrentCameraIndex { get; set; } = 0;
         public Dictionary<int, KeystonePoints> CameraKeystoneSettings { get; set; } = new();

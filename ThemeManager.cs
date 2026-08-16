@@ -214,6 +214,21 @@ namespace ShowWrite
             app.Resources["ThemeButtonPadding"] = new Thickness(colors.ButtonPadding);
             app.Resources["ThemeButtonGroupPadding"] = new Thickness(colors.ButtonGroupPadding, 4, colors.ButtonGroupPadding, 4);
             app.Resources["ThemeShowButtonGroupBackground"] = colors.ShowButtonGroupBackground;
+
+            ApplyFluentButtonResources(app, colors);
+        }
+
+        private static void ApplyFluentButtonResources(Application app, ThemeColors colors)
+        {
+            var hoverBrush = new SolidColorBrush(colors.HoverBackground);
+            var pressedBrush = new SolidColorBrush(colors.PressedBackground);
+
+            app.Resources["ButtonBackgroundPointerOver"] = hoverBrush;
+            app.Resources["ButtonBackgroundPressed"] = pressedBrush;
+            app.Resources["ToggleButtonBackgroundPointerOver"] = hoverBrush;
+            app.Resources["ToggleButtonBackgroundPressed"] = pressedBrush;
+            app.Resources["RepeatButtonBackgroundPointerOver"] = hoverBrush;
+            app.Resources["RepeatButtonBackgroundPressed"] = pressedBrush;
         }
 
         public static void InitializeTheme(Application app)
@@ -245,6 +260,8 @@ namespace ShowWrite
             app.Resources["ThemeButtonPadding"] = new Thickness(DarkTheme.ButtonPadding);
             app.Resources["ThemeButtonGroupPadding"] = new Thickness(DarkTheme.ButtonGroupPadding, 4, DarkTheme.ButtonGroupPadding, 4);
             app.Resources["ThemeShowButtonGroupBackground"] = DarkTheme.ShowButtonGroupBackground;
+
+            ApplyFluentButtonResources(app, DarkTheme);
         }
     }
 }

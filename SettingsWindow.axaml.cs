@@ -1,5 +1,7 @@
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.Styling;
 using System;
 using System.Management;
 
@@ -29,6 +31,10 @@ namespace ShowWrite
         {
             InitializeComponent();
 
+            RequestedThemeVariant = ThemeManager.CurrentTheme == ThemeType.Dark
+                ? ThemeVariant.Dark
+                : ThemeVariant.Light;
+
             _generalPage = this.FindControl<StackPanel>("GeneralPage");
             _penPage = this.FindControl<StackPanel>("PenPage");
             _cameraPage = this.FindControl<StackPanel>("CameraPage");
@@ -57,6 +63,14 @@ namespace ShowWrite
             if (_settingsSplitView != null)
             {
                 _settingsSplitView.IsPaneOpen = !_settingsSplitView.IsPaneOpen;
+            }
+        }
+
+        private void TitleBar_PointerPressed(object? sender, PointerPressedEventArgs e)
+        {
+            if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
+            {
+                BeginMoveDrag(e);
             }
         }
 

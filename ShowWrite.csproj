@@ -41,6 +41,7 @@
 		<PackageReference Include="Avalonia.Desktop" Version="12.1.0" />
 		<PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.0" />
 		<PackageReference Include="Avalonia.Fonts.Inter" Version="12.1.0" />
+		<PackageReference Include="Svg.Controls.Skia.Avalonia" Version="12.0.0.15" />
 		<PackageReference Include="AvaloniaUI.DiagnosticsSupport" Version="2.2.3">
 			<IncludeAssets Condition="'$(Configuration)' != 'Debug'">None</IncludeAssets>
 			<PrivateAssets Condition="'$(Configuration)' != 'Debug'">All</PrivateAssets>
@@ -51,7 +52,7 @@
 		<PackageReference Include="OpenCvSharp4" Version="4.13.0.20260222" />
 		<PackageReference Include="OpenCvSharp4.runtime.win" Version="4.13.0.20260222" />
 		<PackageReference Include="PdfiumViewer.Native.x86_64.v8-xfa" Version="2018.4.8.256" />
-		<PackageReference Include="SkiaSharp" Version="3.119.4" />
+		<PackageReference Include="SkiaSharp" Version="4.148.0" />
 
 		<PackageReference Include="Spire.Presentation" Version="11.2.1" />
 		<PackageReference Include="System.Drawing.Common" Version="10.0.3" />

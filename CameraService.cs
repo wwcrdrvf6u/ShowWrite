@@ -139,6 +139,7 @@ namespace ShowWrite
 
                 _availableCameraIndices = foundCameras;
                 _config.AvailableCameraIndices = foundCameras;
+                _config.AvailableCameraNames = GetCameraDeviceNames();
                 _config.LastScanTime = DateTime.Now;
                 _config.Save();   // 保存到全局配置
 
@@ -184,7 +185,7 @@ namespace ShowWrite
             return names;
         }
 
-        private Dictionary<int, string> GetCameraDeviceNames()
+        public Dictionary<int, string> GetCameraDeviceNames()
         {
             var result = new Dictionary<int, string>();
             try
