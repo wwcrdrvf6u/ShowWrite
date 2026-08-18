@@ -1,0 +1,198 @@
+using System;
+using System.IO;
+using System.IO.Compression;
+using System.Net.Http;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using System.Threading.Tasks;
+
+namespace ShowWrite
+{
+    /// <summary>
+    /// 启动图远程更新器：启动完成后异步校验并下载最新启动图。
+    /// 响应示例：{"version":"1787043680","image_url":"https://github.com/.../boot-package.zip"}
+    /// 全流程写入 %TEMP%\showwrite_bootp.log 便于排查。
+    /// </summary>
+    public static class BootImageUpdater
+    {
+        private const string ApiUrl = "https://sxvillage.dpdns.org/bootp/api/app";
+        // GitHub 下载可能较慢，给足超时
+        private static readonly HttpClient HttpClient = new(new HttpClientHandler
+        {
+            AllowAutoRedirect = true,
+            MaxAutomaticRedirections = 10
+        })
+        { Timeout = TimeSpan.FromMinutes(2) };
+
+        private static readonly string LogFile = Path.Combine(Path.GetTempPath(), "showwrite_bootp.log");
+
+        public static async Task CheckAndUpdateAsync()
+        {
+            Log("=== 启动图更新检查开始 ===");
+            try
+            {
+                Log($"请求 API: {ApiUrl}");
+                var server = await FetchServerInfoAsync();
+                if (server == null)
+                {
+                    Log("API 返回 null，退出");
+                    return;
+                }
+                Log($"服务端 version={server.Version}, image_url={server.ImageUrl}");
+
+                if (string.IsNullOrEmpty(server.Version) || string.IsNullOrEmpty(server.ImageUrl))
+                {
+                    Log("version 或 image_url 为空，退出");
+                    return;
+                }
+
+                var localVersion = GetLocalVersion();
+                Log($"本地版本: {(localVersion ?? "(无 v.json)")}");
+
+                if (!string.IsNullOrEmpty(localVersion) && localVersion == server.Version)
+                {
+                    Log("版本一致，跳过下载");
+                    return;
+                }
+
+                Log("版本不一致或本地无版本文件，开始下载");
+                var tempZip = Path.Combine(Path.GetTempPath(), $"showwrite_bootp_{server.Version}.zip");
+                Log($"下载到: {tempZip}");
+                await DownloadFileAsync(server.ImageUrl, tempZip);
+
+                var zipInfo = new FileInfo(tempZip);
+                Log($"下载完成，文件大小: {zipInfo.Length} 字节");
+
+                var bootPath = Config.GetBootPath();
+                Log($"启动图目录: {bootPath}");
+                if (!Directory.Exists(bootPath))
+                {
+                    Directory.CreateDirectory(bootPath);
+                    Log("创建启动图目录");
+                }
+                else
+                {
+                    Log("清空启动图目录");
+                    ClearDirectory(bootPath);
+                }
+
+                Log("解压中...");
+                ZipFile.ExtractToDirectory(tempZip, bootPath, overwriteFiles: true);
+                Log("解压完成，文件列表:");
+                foreach (var f in Directory.EnumerateFiles(bootPath))
+                    Log($"  - {Path.GetFileName(f)}");
+
+                SaveLocalVersion(server.Version);
+                Log($"写入 v.json version={server.Version}");
+
+                try { File.Delete(tempZip); Log("清理临时压缩包"); } catch (Exception ex) { Log($"清理临时压缩包失败: {ex.Message}"); }
+                Log("=== 启动图更新完成 ===");
+            }
+            catch (Exception ex)
+            {
+                Log($"[失败] {ex.GetType().Name}: {ex.Message}");
+                if (ex.InnerException != null)
+                    Log($"  Inner: {ex.InnerException.GetType().Name}: {ex.InnerException.Message}");
+                Log(ex.StackTrace ?? "(无堆栈)");
+            }
+        }
+
+        private static async Task<BootInfo?> FetchServerInfoAsync()
+        {
+            try
+            {
+                using var resp = await HttpClient.GetAsync(ApiUrl);
+                Log($"API HTTP {(int)resp.StatusCode} {resp.StatusCode}");
+                resp.EnsureSuccessStatusCode();
+                var json = await resp.Content.ReadAsStringAsync();
+                Log($"API 响应: {json}");
+                return JsonSerializer.Deserialize<BootInfo>(json);
+            }
+            catch (Exception ex)
+            {
+                Log($"FetchServerInfo 异常: {ex.Message}");
+                return null;
+            }
+        }
+
+        private static string? GetLocalVersion()
+        {
+            var vFile = Path.Combine(Config.GetBootPath(), "v.json");
+            if (!File.Exists(vFile))
+            {
+                Log($"本地 v.json 不存在: {vFile}");
+                return null;
+            }
+            try
+            {
+                var json = File.ReadAllText(vFile);
+                Log($"本地 v.json 内容: {json}");
+                var info = JsonSerializer.Deserialize<BootInfo>(json);
+                return info?.Version;
+            }
+            catch (Exception ex)
+            {
+                Log($"读取 v.json 异常: {ex.Message}");
+                return null;
+            }
+        }
+
+        private static void SaveLocalVersion(string version)
+        {
+            var vFile = Path.Combine(Config.GetBootPath(), "v.json");
+            var json = JsonSerializer.Serialize(new BootInfo { Version = version });
+            File.WriteAllText(vFile, json);
+        }
+
+        private static async Task DownloadFileAsync(string url, string destPath)
+        {
+            try
+            {
+                using var resp = await HttpClient.GetAsync(url, HttpCompletionOption.ResponseContentRead);
+                Log($"下载 HTTP {(int)resp.StatusCode} {resp.StatusCode}");
+                resp.EnsureSuccessStatusCode();
+                using var fs = File.Create(destPath);
+                await resp.Content.CopyToAsync(fs);
+            }
+            catch (Exception ex)
+            {
+                Log($"DownloadFile 异常: {ex.Message}");
+                throw;
+            }
+        }
+
+        private static void ClearDirectory(string path)
+        {
+            foreach (var file in Directory.EnumerateFiles(path))
+            {
+                try { File.Delete(file); } catch (Exception ex) { Log($"删除文件失败 {file}: {ex.Message}"); }
+            }
+            foreach (var dir in Directory.EnumerateDirectories(path))
+            {
+                try { Directory.Delete(dir, recursive: true); } catch (Exception ex) { Log($"删除目录失败 {dir}: {ex.Message}"); }
+            }
+        }
+
+        private static void Log(string message)
+        {
+            try
+            {
+                var line = $"[{DateTime.Now:HH:mm:ss.fff}] {message}{Environment.NewLine}";
+                File.AppendAllText(LogFile, line);
+            }
+            catch { }
+        }
+    }
+
+    /// <summary>
+    /// 启动图远端配置 DTO。
+    /// </summary>
+    public class BootInfo
+    {
+        [JsonPropertyName("version")]
+        public string? Version { get; set; }
+
+        [JsonPropertyName("image_url")]
+        public string? ImageUrl { get; set; }
+    }
+}

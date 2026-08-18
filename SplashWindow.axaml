@@ -1,0 +1,45 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="ShowWrite.SplashWindow"
+        Width="800"
+        Height="450"
+        CanResize="False"
+        ShowInTaskbar="False"
+        WindowStartupLocation="CenterScreen"
+        WindowDecorations="None"
+        Background="White">
+
+    <Grid ClipToBounds="True">
+        <!-- 主图：保持比例不拉伸，居中显示 -->
+        <Image x:Name="SplashImage"
+               Stretch="Uniform"
+               HorizontalAlignment="Stretch"
+               VerticalAlignment="Stretch"/>
+
+        <!-- 模糊副本：仅显示底部 60px 区域，作为磨砂质感来源 -->
+        <Image x:Name="SplashImageBlur"
+               Stretch="Uniform"
+               HorizontalAlignment="Stretch"
+               VerticalAlignment="Stretch"
+               IsHitTestVisible="False">
+            <Image.Effect>
+                <BlurEffect Radius="20"/>
+            </Image.Effect>
+            <Image.Clip>
+                <RectangleGeometry Rect="0,390,800,60"/>
+            </Image.Clip>
+        </Image>
+
+        <!-- 底部半透明白条 + 文字，覆盖在模糊图片上形成磨砂质感 -->
+        <Border Height="60"
+                VerticalAlignment="Bottom"
+                Background="#CCFFFFFF">
+            <TextBlock Text="ShowWrite视频展台"
+                       Foreground="#333333"
+                       FontSize="22"
+                       FontWeight="SemiBold"
+                       HorizontalAlignment="Center"
+                       VerticalAlignment="Center"/>
+        </Border>
+    </Grid>
+</Window>

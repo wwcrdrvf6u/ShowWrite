@@ -153,6 +153,11 @@ namespace ShowWrite
         private Border? _eraserCursor;
 
         public MainWindow()
+            : this(new CameraService())
+        {
+        }
+
+        public MainWindow(CameraService cameraService)
         {
             InitializeComponent();
             this.WindowState = WindowState.FullScreen;
@@ -258,7 +263,7 @@ namespace ShowWrite
 
             InkCanvasOverlay.SetVideoImage(VideoImage);
 
-            _cameraService = new CameraService();
+            _cameraService = cameraService;
             _cameraService.ErrorOccurred += OnCameraError;
             _cameraService.FrameReady += OnFrameReady;
             _cameraService.CameraStarted += OnCameraStarted;
@@ -1241,7 +1246,15 @@ namespace ShowWrite
 
             _ = InitializeLicenseAsync();
 
-            _cameraService.DetectAndConnectCamera();
+            // 启动图阶段已连接摄像头时直接触发已启动逻辑；否则正常发起连接
+            if (_cameraService.IsConnected)
+            {
+                OnCameraStarted();
+            }
+            else
+            {
+                _cameraService.DetectAndConnectCamera();
+            }
 
             InitializeGlobalHotKey();
         }

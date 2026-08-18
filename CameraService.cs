@@ -330,16 +330,23 @@ namespace ShowWrite
         {
             while (!token.IsCancellationRequested)
             {
+                if (_cancelled)
+                    break;
+
+                VideoCapture? capture;
+                Mat? frame;
+                lock (_lock)
+                {
+                    if (_capture == null || _latestFrame == null || _cancelled)
+                        break;
+                    capture = _capture;
+                    frame = _latestFrame;
+                }
+
                 try
                 {
-                    lock (_lock)
-                    {
-                        if (_capture == null || _latestFrame == null || _cancelled)
-                            break;
-                        _capture.Read(_latestFrame);
-                    }
-                    // 控制帧率约 60fps
-                    Thread.Sleep(16);
+                    // 在锁外读取，避免阻塞 UI 线程的 UpdateFrame
+                    capture.Read(frame);
                 }
                 catch (Exception ex)
                 {
@@ -349,6 +356,9 @@ namespace ShowWrite
                     });
                     break;
                 }
+
+                // 控制帧率约 60fps
+                Thread.Sleep(16);
             }
         }
 
@@ -416,9 +426,10 @@ namespace ShowWrite
                 {
                     frameToDisplay.Dispose();
                 }
-
-                FrameReady?.Invoke();
             }
+
+            // 在锁外触发事件，避免长时间持有锁阻塞捕获线程
+            FrameReady?.Invoke();
         }
 
         /// <summary>
@@ -462,6 +473,15 @@ namespace ShowWrite
             _uiTimer = null;
 
             _cts?.Cancel();
+
+            // 等待捕获循环退出，避免在 Read 过程中释放资源导致访问已释放对象
+            var task = _captureTask;
+            try
+            {
+                task?.Wait(500);
+            }
+            catch { }
+
             _captureTask = null;
 
             _cts?.Dispose();

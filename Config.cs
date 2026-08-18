@@ -69,6 +69,17 @@ namespace ShowWrite
                 "PKG");
         }
 
+        /// <summary>
+        /// 启动图所在的目录（配置目录下的 bootP 文件夹）。
+        /// </summary>
+        public static string GetBootPath()
+        {
+            return Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                "ShowWrite",
+                "bootP");
+        }
+
         public static Config Load()
         {
             try

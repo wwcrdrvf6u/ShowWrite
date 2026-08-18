@@ -4,6 +4,8 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using System;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace ShowWrite
 {
@@ -68,18 +70,86 @@ namespace ShowWrite
                 }
                 else
                 {
-                    var mainWindow = new MainWindow();
-                    desktop.MainWindow = mainWindow;
-                    MainWindow = mainWindow;
+                    // 启动图优先显示，异步连接摄像头
+                    var splash = new SplashWindow();
+                    desktop.MainWindow = splash;
+                    splash.Show();
 
-                    if (Program.FilesToOpen.Count > 0)
-                    {
-                        mainWindow.OpenFiles(Program.FilesToOpen);
-                    }
+                    var cameraService = new CameraService();
+                    StartNormalModeAsync(desktop, splash, cameraService);
                 }
             }
 
             base.OnFrameworkInitializationCompleted();
+        }
+
+        /// <summary>
+        /// 异步启动主窗口流程：等待摄像头连接完成（或超时/出错）后再关闭启动图并显示主窗口。
+        /// </summary>
+        private async void StartNormalModeAsync(
+            IClassicDesktopStyleApplicationLifetime desktop,
+            SplashWindow splash,
+            CameraService cameraService)
+        {
+            var tcs = new TaskCompletionSource<bool>();
+            int finished = 0;
+
+            // 超时保护（8 秒），防止摄像头连接卡死导致无法进入主程序
+            using var timeoutCts = new CancellationTokenSource();
+            timeoutCts.Token.Register(() =>
+            {
+                if (Interlocked.CompareExchange(ref finished, 1, 0) == 0)
+                    tcs.TrySetResult(false);
+            });
+            timeoutCts.CancelAfter(TimeSpan.FromSeconds(8));
+
+            Action cameraStartedHandler = () =>
+            {
+                if (Interlocked.CompareExchange(ref finished, 1, 0) == 0)
+                    tcs.TrySetResult(true);
+            };
+            Action<string> errorHandler = _ =>
+            {
+                if (Interlocked.CompareExchange(ref finished, 1, 0) == 0)
+                    tcs.TrySetResult(false);
+            };
+
+            cameraService.CameraStarted += cameraStartedHandler;
+            cameraService.ErrorOccurred += errorHandler;
+
+            // 异步启动摄像头连接过程
+            cameraService.DetectAndConnectCamera();
+
+            // 等待摄像头连接完成或超时
+            await tcs.Task;
+
+            // 取消临时事件订阅
+            cameraService.CameraStarted -= cameraStartedHandler;
+            cameraService.ErrorOccurred -= errorHandler;
+
+            try
+            {
+                // 关闭启动图，启动主窗口
+                var mainWindow = new MainWindow(cameraService);
+                desktop.MainWindow = mainWindow;
+                MainWindow = mainWindow;
+
+                if (Program.FilesToOpen.Count > 0)
+                {
+                    mainWindow.OpenFiles(Program.FilesToOpen);
+                }
+
+                mainWindow.Show();
+                splash.Close();
+
+                // 启动完成后异步检查并更新启动图（不占用启动时间）
+                _ = BootImageUpdater.CheckAndUpdateAsync();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[App] 主窗口启动失败: {ex.Message}");
+                splash.Close();
+            }
         }
     }
 
