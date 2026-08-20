@@ -19,13 +19,18 @@ namespace ShowWrite
     public class CameraService : IDisposable
     {
         private VideoCapture? _capture;
-        private CancellationTokenSource? _cts;
-        private Task? _captureTask;
         private volatile bool _cancelled = false;
         private readonly object _lock = new();
         private volatile bool _connectCancelled = false;
+        // 每次 StartCapture 递增，Task.Run 捕获此代次，
+        // 防止旧 Task.Run 在新 StartCapture 重置 _cancelled=false 后误以为未取消，
+        // 导致旧 VideoCapture 覆盖新 _capture（资源泄漏 + 摄像头设备冲突）。
+        private volatile int _captureGeneration = 0;
 
         private WriteableBitmap? _frameBitmap;
+        // 单 Mat：capture.Read 与 UI 拷贝都在 UI 线程的 DispatcherTimer 中完成（同线程不重入），
+        // 无需双缓冲。OpenCV 非线程安全——之前后台线程 capture.Read 与 UI 线程 DataPointer 访问
+        // 跨线程并发，OpenCV 全局状态冲突导致 native 堆损坏 → AccessViolation。
         private Mat? _latestFrame;
         private Mat? _processedFrame;
 
@@ -62,7 +67,8 @@ namespace ShowWrite
         }
 
         /// <summary>
-        /// 获取处理后的帧（应用了透视变换）
+        /// 获取处理后的帧（应用了透视变换）。返回独立 Mat 副本，调用方自行 Dispose；
+        /// CaptureLoop 在 finally dispose _latestFrame 时不会影响已返回的副本，避免 AccessViolation。
         /// </summary>
         public Mat? GetProcessedFrame()
         {
@@ -75,7 +81,43 @@ namespace ShowWrite
                 {
                     return ApplyPerspectiveTransform(_latestFrame);
                 }
-                return _latestFrame;
+                // 无透视变换：必须 clone 返回，否则调用方持有的就是 _latestFrame 本身，
+                // CaptureLoop finally dispose 它时调用方仍在用 → AccessViolation。
+                return _latestFrame.Clone();
+            }
+        }
+
+        /// <summary>
+        /// 获取当前显示帧的稳定副本（持锁内 clone）。供 UI 线程异步使用（如 PresentCameraFrame→InkCanvas），
+        /// 调用方用完自行 Dispose；CaptureLoop dispose 原始 _latestFrame 不影响本副本。
+        /// </summary>
+        public Mat? GetLatestFrameCopy()
+        {
+            lock (_lock)
+            {
+                if (_latestFrame == null || _latestFrame.Empty())
+                    return null;
+                return _latestFrame.Clone();
+            }
+        }
+
+        /// <summary>
+        /// 持锁读取当前显示帧的尺寸（不 Clone Mat）。供高频 UI 调用（如 60fps PresentCameraFrame）使用：
+        /// 读尺寸只需访问 Mat 元数据，不需要 Clone 整帧像素（Clone 2.7MB/帧 × 60fps = 162MB/秒 分配压力，
+        /// 会压垮 OpenCV 内存池导致 "Failed to allocate N bytes"）。
+        /// </summary>
+        public bool TryGetLatestFrameSize(out int width, out int height)
+        {
+            lock (_lock)
+            {
+                if (_latestFrame == null || _latestFrame.Empty())
+                {
+                    width = 0; height = 0;
+                    return false;
+                }
+                width = _latestFrame.Width;
+                height = _latestFrame.Height;
+                return true;
             }
         }
 
@@ -223,17 +265,21 @@ namespace ShowWrite
         }
 
         /// <summary>
-        /// 启动指定索引的摄像头
+        /// 启动指定索引的摄像头。本方法由 UI 线程调用。摄像头初始化（new VideoCapture + 设置 + 丢弃前几帧）
+        /// 下到线程池避免阻塞 UI，完成后 Post 回 UI 线程启动 DispatcherTimer。
+        /// capture.Read 在 DispatcherTimer Tick 中调用——所有 OpenCV 调用单线程完成。
+        /// 使用 _captureGeneration 代次计数器：新 StartCapture 递增代次使旧 Task.Run 失效，
+        /// 避免旧 Task.Run 在 _cancelled 被 StartCapture 重置为 false 后继续执行，
+        /// 向 UI Post 过期 VideoCapture 覆盖新 _capture（资源泄漏 + 设备冲突）。
+        /// 带重试打开：从照片模式退出后摄像头驱动可能未立即释放设备，需短暂等待重试。
         /// </summary>
         public void StartCapture(int cameraIndex)
         {
             if (_connectCancelled) return;
 
-            lock (_lock)
-            {
-                StopCaptureInternal();
-                _cancelled = false;
-            }
+            StopCaptureInternal();
+            _cancelled = false;
+            int generation = ++_captureGeneration;
 
             Task.Run(() =>
             {
@@ -242,10 +288,28 @@ namespace ShowWrite
 
                 try
                 {
-                    capture = new VideoCapture(cameraIndex, VideoCaptureAPIs.MSMF);
-
-                    if (!capture.IsOpened())
+                    // 重试打开摄像头：从照片模式退出后 VideoCapture.Release 到驱动实际释放设备
+                    // 可能有延迟，立即重新打开会因 "设备被占用" 失败。最多重试 5 次，每次间隔 300ms。
+                    int maxRetries = 5;
+                    for (int attempt = 0; attempt < maxRetries; attempt++)
                     {
+                        if (_captureGeneration != generation || _connectCancelled)
+                            return;
+
+                        capture = new VideoCapture(cameraIndex, VideoCaptureAPIs.MSMF);
+                        if (capture.IsOpened())
+                            break;
+
+                        capture.Dispose();
+                        capture = null;
+
+                        if (attempt < maxRetries - 1)
+                            Thread.Sleep(300);
+                    }
+
+                    if (capture == null || !capture.IsOpened())
+                    {
+                        capture?.Dispose();
                         Dispatcher.UIThread.Post(() =>
                         {
                             ErrorOccurred?.Invoke($"无法打开摄像头 {cameraIndex}");
@@ -266,7 +330,7 @@ namespace ShowWrite
                     // 丢弃前几帧（让摄像头稳定）
                     for (int i = 0; i < 5; i++)
                     {
-                        if (_cancelled)
+                        if (_captureGeneration != generation)
                         {
                             capture?.Release();
                             capture?.Dispose();
@@ -280,7 +344,9 @@ namespace ShowWrite
                     {
                         lock (_lock)
                         {
-                            if (_cancelled)
+                            // 代次不匹配：本次 StartCapture 已被更新的 StartCapture 取代，
+                            // 释放本次资源，不覆盖 _capture（避免旧 VideoCapture 覆盖新连接）。
+                            if (_captureGeneration != generation)
                             {
                                 capture?.Release();
                                 capture?.Dispose();
@@ -289,20 +355,33 @@ namespace ShowWrite
                             }
 
                             _capture = capture;
+                            // 单 Mat：capture.Read 在 UI 线程的 DispatcherTimer 中调用，无需双缓冲
+                            _latestFrame?.Dispose();
                             _latestFrame = mat;
 
                             _frameWidth = width;
                             _frameHeight = height;
                             _frameStride = width * 3;
 
-                            _frameBitmap = new WriteableBitmap(
-                                new PixelSize(width, height),
-                                new Vector(96, 96),
-                                PixelFormats.Bgr24);
+                            // 仅在尺寸变化或首次创建时重建位图，并释放旧位图。
+                            // 旧实现每次 StartCapture 都新建 WriteableBitmap 且不 Dispose，
+                            // 导致原生 UnmanagedBlob 泄漏，最终 Lock() 的转码分配抛 OutOfMemoryException。
+                            if (_frameBitmap == null
+                                || _frameBitmap.PixelSize.Width != width
+                                || _frameBitmap.PixelSize.Height != height)
+                            {
+                                _frameBitmap?.Dispose();
+                                // 使用平台原生支持的 Bgra8888 格式，避免 Avalonia 在 Lock
+                                // 释放时为非原生格式（Bgr24）分配临时转码缓冲与额外 staging 内存。
+                                _frameBitmap = new WriteableBitmap(
+                                    new PixelSize(width, height),
+                                    new Vector(96, 96),
+                                    PixelFormats.Bgra8888,
+                                    AlphaFormat.Premul);
+                            }
 
-                            _cts = new CancellationTokenSource();
-                            _captureTask = Task.Run(() => CaptureLoop(_cts.Token));
-
+                            // 不再启动后台 CaptureLoop：capture.Read 在 UI 线程 DispatcherTimer 中调用，
+                            // 所有 OpenCV 调用单线程完成，消除跨线程 OpenCV 全局状态冲突。
                             StartUiTimer();
 
                             CameraStarted?.Invoke();
@@ -324,52 +403,14 @@ namespace ShowWrite
         }
 
         /// <summary>
-        /// 捕获循环（后台线程）
-        /// </summary>
-        private void CaptureLoop(CancellationToken token)
-        {
-            while (!token.IsCancellationRequested)
-            {
-                if (_cancelled)
-                    break;
-
-                VideoCapture? capture;
-                Mat? frame;
-                lock (_lock)
-                {
-                    if (_capture == null || _latestFrame == null || _cancelled)
-                        break;
-                    capture = _capture;
-                    frame = _latestFrame;
-                }
-
-                try
-                {
-                    // 在锁外读取，避免阻塞 UI 线程的 UpdateFrame
-                    capture.Read(frame);
-                }
-                catch (Exception ex)
-                {
-                    Dispatcher.UIThread.Post(() =>
-                    {
-                        ErrorOccurred?.Invoke($"捕获循环异常: {ex.Message}");
-                    });
-                    break;
-                }
-
-                // 控制帧率约 60fps
-                Thread.Sleep(16);
-            }
-        }
-
-        /// <summary>
-        /// 启动 UI 定时器，定期将最新帧绘制到 WriteableBitmap
+        /// 启动 UI 定时器。30fps（33ms）：capture.Read 在 Tick 中同步调用（OpenCV 非线程安全，
+        /// 必须在 UI 线程），33ms 间隔给 Read + 像素拷贝留时间，避免连帧压垮。
         /// </summary>
         private void StartUiTimer()
         {
             _uiTimer = new DispatcherTimer
             {
-                Interval = TimeSpan.FromMilliseconds(16) // 约 60fps
+                Interval = TimeSpan.FromMilliseconds(33)
             };
 
             _uiTimer.Tick += (_, _) => UpdateFrame();
@@ -377,14 +418,26 @@ namespace ShowWrite
         }
 
         /// <summary>
-        /// 更新 UI 帧（应用透视变换并复制到 Bitmap）
+        /// 更新 UI 帧：单线程架构——capture.Read + 透视变换 + 像素拷贝都在 UI 线程完成。
+        /// OpenCV 非线程安全，所有 OpenCV 调用必须在同一线程，否则全局状态冲突 → native 堆损坏。
         /// </summary>
         private unsafe void UpdateFrame()
         {
             lock (_lock)
             {
-                if (_frameBitmap == null || _latestFrame == null || _cancelled)
+                if (_frameBitmap == null || _latestFrame == null || _cancelled || _capture == null)
                     return;
+
+                // capture.Read 在 UI 线程调用：与下面的 DataPointer 访问同线程，无跨线程冲突
+                try
+                {
+                    _capture.Read(_latestFrame);
+                }
+                catch
+                {
+                    // 摄像头读取异常：不抛，等下次 Tick 重试
+                    return;
+                }
 
                 if (_latestFrame.Empty())
                     return;
@@ -401,24 +454,26 @@ namespace ShowWrite
 
                 using var locked = _frameBitmap.Lock();
 
-                var srcPtr = (void*)frameToDisplay.DataPointer;
-                var dstPtr = (void*)locked.Address;
+                // 源 Mat 为 Bgr24（3 字节/像素），目标位图为 Bgra8888（4 字节/像素）。
+                // 逐像素 BGR -> BGRA(A=255)，避免 Avalonia 在 Lock 释放时为非原生支持格式
+                // 分配临时转码缓冲（原实现每帧约 3.69MB 分配/释放并占用额外 staging 内存）。
+                byte* src = (byte*)frameToDisplay.DataPointer;
+                byte* dst = (byte*)locked.Address;
+                int srcStride = _frameStride;       // width * 3（源 Bgr24 步长）
+                int dstStride = locked.RowBytes;     // 通常 width * 4，可能对齐填充
 
-                if (locked.RowBytes == _frameStride)
+                for (int y = 0; y < _frameHeight; y++)
                 {
-                    Buffer.MemoryCopy(srcPtr, dstPtr,
-                        _frameStride * _frameHeight,
-                        _frameStride * _frameHeight);
-                }
-                else
-                {
-                    for (int i = 0; i < _frameHeight; i++)
+                    byte* s = src + y * srcStride;
+                    byte* d = dst + y * dstStride;
+                    for (int x = 0; x < _frameWidth; x++)
                     {
-                        Buffer.MemoryCopy(
-                            (byte*)srcPtr + i * _frameStride,
-                            (byte*)dstPtr + i * locked.RowBytes,
-                            _frameStride,
-                            _frameStride);
+                        d[0] = s[0]; // B
+                        d[1] = s[1]; // G
+                        d[2] = s[2]; // R
+                        d[3] = 255;  // A 完全不透明（预乘 alpha 下等价）
+                        s += 3;
+                        d += 4;
                     }
                 }
 
@@ -446,14 +501,12 @@ namespace ShowWrite
         }
 
         /// <summary>
-        /// 停止捕获
+        /// 停止捕获。本方法由 UI 线程调用；不在本方法持锁，避免与 CaptureLoop.finally 持锁
+        /// 释放资源时形成死锁（task.Wait 等 CaptureLoop 退出，CaptureLoop 退出时持锁 dispose）。
         /// </summary>
         public void StopCapture()
         {
-            lock (_lock)
-            {
-                StopCaptureInternal();
-            }
+            StopCaptureInternal();
         }
 
         /// <summary>
@@ -465,34 +518,36 @@ namespace ShowWrite
             StopCapture();
         }
 
+        /// <summary>
+        /// 停止捕获。单线程架构下无后台任务：停 DispatcherTimer 后所有 OpenCV 调用停止，
+        /// 即可持锁释放 _capture/_latestFrame（与 UpdateFrame 持锁互斥，无并发访问）。
+        /// </summary>
         private void StopCaptureInternal()
         {
             _cancelled = true;
+            // 递增代次：使任何在途 Task.Run 的 generation 检查失效，
+            // 旧 Task.Run 会在循环检查和 UI Post 中检测到代次不匹配而自行释放资源退出。
+            _captureGeneration++;
 
+            // 先停 DispatcherTimer：UpdateFrame 不再调用 capture.Read/DataPointer，
+            // 之后持锁释放 _capture/_latestFrame 才安全（不会与 UpdateFrame 并发）。
             _uiTimer?.Stop();
             _uiTimer = null;
 
-            _cts?.Cancel();
-
-            // 等待捕获循环退出，避免在 Read 过程中释放资源导致访问已释放对象
-            var task = _captureTask;
-            try
+            lock (_lock)
             {
-                task?.Wait(500);
+                var capture = _capture;
+                var display = _latestFrame;
+                _capture = null;
+                _latestFrame = null;
+                try
+                {
+                    capture?.Release();
+                    capture?.Dispose();
+                    display?.Dispose();
+                }
+                catch { }
             }
-            catch { }
-
-            _captureTask = null;
-
-            _cts?.Dispose();
-            _cts = null;
-
-            _capture?.Release();
-            _capture?.Dispose();
-            _capture = null;
-
-            _latestFrame?.Dispose();
-            _latestFrame = null;
         }
 
         /// <summary>

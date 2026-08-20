@@ -122,7 +122,7 @@ namespace ShowWrite
             }
         }
 
-        private void SetVideoSize(int width, int height)
+        public void SetVideoSize(int width, int height)
         {
             if (width <= 0 || height <= 0) return;
             if (_videoWidth == width && _videoHeight == height) return;

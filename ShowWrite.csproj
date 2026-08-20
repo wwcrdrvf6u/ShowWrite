@@ -61,6 +61,7 @@
 		<PackageReference Include="Aspose.Slides.NET" Version="26.2.0" />
 		<PackageReference Include="Microsoft.Toolkit.Uwp.Notifications" Version="7.1.3" />
 		<PackageReference Include="NAudio" Version="2.2.1" />
-		
+		<PackageReference Include="RapidOcrNet" Version="4.0.2" />
+
 	</ItemGroup>
 </Project>

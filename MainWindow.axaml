@@ -18,6 +18,7 @@
     <Window.Resources>
         <local:SelectedBackgroundConverter x:Key="SelectedBackgroundConverter"/>
         <local:SelectedForegroundConverter x:Key="SelectedForegroundConverter"/>
+        <local:LevelToIndentConverter x:Key="LevelToIndentConverter"/>
     </Window.Resources>
 
     <Window.Styles>
@@ -51,6 +52,20 @@
             <Setter Property="Background" Value="{DynamicResource ThemeHoverBackground}"/>
         </Style>
         <Style Selector="Button.nav-btn:pressed">
+            <Setter Property="Background" Value="{DynamicResource ThemePressedBackground}"/>
+        </Style>
+        <Style Selector="Button.title-btn">
+            <Setter Property="Background" Value="{DynamicResource ThemeSurface}"/>
+            <Setter Property="BorderThickness" Value="3,0,0,0"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource ThemePrimary}"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="Foreground" Value="{DynamicResource ThemeTextPrimary}"/>
+        </Style>
+        <Style Selector="Button.title-btn:pointerover">
+            <Setter Property="Background" Value="{DynamicResource ThemeHoverBackground}"/>
+        </Style>
+        <Style Selector="Button.title-btn:pressed">
             <Setter Property="Background" Value="{DynamicResource ThemePressedBackground}"/>
         </Style>
         <Style Selector="ToggleButton.tool-btn">
@@ -155,6 +170,29 @@
         </Style>
         <Style Selector="Button.menu-btn:pressed">
             <Setter Property="Background" Value="{DynamicResource ThemePressedBackground}"/>
+        </Style>
+        <Style Selector="Button.tab-btn">
+            <Setter Property="FontFamily" Value="avares://ShowWrite/font/HarmonyOS_Sans_SC_Medium.ttf#HarmonyOS Sans SC"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="0,10"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="CornerRadius" Value="0"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Foreground" Value="{DynamicResource ThemeTextSecondary}"/>
+            <Setter Property="HorizontalAlignment" Value="Stretch"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+        </Style>
+        <Style Selector="Button.tab-btn:pointerover">
+            <Setter Property="Background" Value="#15FFFFFF"/>
+        </Style>
+        <Style Selector="Button.tab-btn.active">
+            <Setter Property="Background" Value="{DynamicResource ThemePrimary}"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+        </Style>
+        <Style Selector="Button.tab-btn.active:pointerover">
+            <Setter Property="Background" Value="{DynamicResource ThemePrimaryHover}"/>
         </Style>
     </Window.Styles>
 
@@ -370,181 +408,294 @@
                     <RowDefinition Height="*"/>
                     <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
-                
-                <Grid Grid.Row="0">
-                    <ScrollViewer Padding="8">
-                        <ItemsControl x:Name="PhotoList" ItemsSource="{Binding Photos}" x:CompileBindings="False">
-                            <ItemsControl.ItemTemplate>
-                            <DataTemplate x:DataType="local:PhotoItem">
-                                <Border x:Name="PhotoItemBorder"
-                                        Background="{Binding IsSelected, Converter={StaticResource SelectedBackgroundConverter}}"
-                                        CornerRadius="8" 
-                                        Margin="4"
-                                        Padding="8"
-                                        Cursor="Hand"
-                                        PointerPressed="PhotoItem_PointerPressed"
-                                        PointerMoved="PhotoItem_PointerMoved"
-                                        PointerReleased="PhotoItem_PointerReleased"
-                                        Tag="{Binding}">
-                                    <Grid RowDefinitions="Auto,*">
-                                        <TextBlock Grid.Row="0"
-                                                   Text="{Binding Index}"
-                                                   FontSize="12"
-                                                   FontWeight="Bold"
-                                                   Foreground="{Binding IsSelected, Converter={StaticResource SelectedForegroundConverter}}"
-                                                   HorizontalAlignment="Left"
-                                                   Margin="0,0,0,4"/>
-                                        <Grid Grid.Row="1">
-                                            <Image Source="{Binding Thumbnail}"
-                                                   Stretch="Uniform"
-                                                   HorizontalAlignment="Stretch"/>
-                                            <Border IsVisible="{Binding IsSelected}"
-                                                    Background="#80000000"
-                                                    VerticalAlignment="Stretch"
-                                                    HorizontalAlignment="Stretch">
-                                                <TextBlock Text="再次点击&#10;返回实时"
-                                                           FontSize="14"
-                                                           FontWeight="Bold"
-                                                           Foreground="White"
-                                                           HorizontalAlignment="Center"
-                                                           VerticalAlignment="Center"
-                                                           TextAlignment="Center"/>
-                                            </Border>
-                                            <Grid HorizontalAlignment="Left"
-                                                  VerticalAlignment="Bottom"
-                                                  Margin="4">
-                                                <Grid.RowDefinitions>
-                                                    <RowDefinition Height="Auto"/>
-                                                    <RowDefinition Height="Auto"/>
-                                                </Grid.RowDefinitions>
-                                                <CheckBox x:Name="PhotoCheckBox"
-                                                          Grid.Row="0"
-                                                          HorizontalAlignment="Left"
-                                                          IsChecked="{Binding IsChecked}"
-                                                          IsVisible="{Binding $parent[ItemsControl].((local:MainWindow)DataContext).IsSelectMode}"
-                                                          Background="White"
-                                                          BorderBrush="#CCCCCC"/>
-                                                <Button Width="28"
-                                                        Height="28"
-                                                        Grid.Row="1"
-                                                        HorizontalAlignment="Left"
-                                                        Classes="delete-btn"
-                                                        CornerRadius="14"
-                                                        Padding="0"
-                                                        Click="DeletePhoto_Click"
-                                                        Tag="{Binding}"
-                                                        IsVisible="{Binding !IsDeleting}">
-                                                    <Viewbox Width="16" Height="16">
-                                                        <Path Fill="White" Data="M5.75 3V1.5h4.5V3zm-1.5 0V1a1 1 0 0 1 1-1h5.5a1 1 0 0 1 1 1v2h2.5a.75.75 0 0 1 0 1.5h-.365l-.743 9.653A2 2 0 0 1 11.148 16H4.852a2 2 0 0 1-1.994-1.847L2.115 4.5H1.75a.75.75 0 0 1 0-1.5zm-.63 1.5h8.76l-.734 9.538a.5.5 0 0 1-.498.462H4.852a.5.5 0 0 1-.498-.462z"/>
-                                                    </Viewbox>
-                                                </Button>
-                                                <StackPanel Orientation="Vertical"
+
+                <!-- Row 0: 内容区域（根据选中的选项卡显示照片内容或题目内容） -->
+                <!-- 照片内容（"文件"选项卡选中时显示） -->
+                <Grid Grid.Row="0" x:Name="PhotoContentPanel">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <Grid Grid.Row="0">
+                        <ScrollViewer Padding="8">
+                            <ItemsControl x:Name="PhotoList" ItemsSource="{Binding Photos}" x:CompileBindings="False">
+                                <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="local:PhotoItem">
+                                    <Border x:Name="PhotoItemBorder"
+                                            Background="{Binding IsSelected, Converter={StaticResource SelectedBackgroundConverter}}"
+                                            CornerRadius="8"
+                                            Margin="4"
+                                            Padding="8"
+                                            Cursor="Hand"
+                                            PointerPressed="PhotoItem_PointerPressed"
+                                            PointerMoved="PhotoItem_PointerMoved"
+                                            PointerReleased="PhotoItem_PointerReleased"
+                                            Tag="{Binding}">
+                                        <Grid RowDefinitions="Auto,*">
+                                            <TextBlock Grid.Row="0"
+                                                       Text="{Binding Index}"
+                                                       FontSize="12"
+                                                       FontWeight="Bold"
+                                                       Foreground="{Binding IsSelected, Converter={StaticResource SelectedForegroundConverter}}"
+                                                       HorizontalAlignment="Left"
+                                                       Margin="0,0,0,4"/>
+                                            <Grid Grid.Row="1">
+                                                <Image Source="{Binding Thumbnail}"
+                                                       Stretch="Uniform"
+                                                       HorizontalAlignment="Stretch"/>
+                                                <Border IsVisible="{Binding IsSelected}"
+                                                        Background="#80000000"
+                                                        VerticalAlignment="Stretch"
+                                                        HorizontalAlignment="Stretch">
+                                                    <TextBlock Text="再次点击&#10;返回实时"
+                                                               FontSize="14"
+                                                               FontWeight="Bold"
+                                                               Foreground="White"
+                                                               HorizontalAlignment="Center"
+                                                               VerticalAlignment="Center"
+                                                               TextAlignment="Center"/>
+                                                </Border>
+                                                <Grid HorizontalAlignment="Left"
+                                                      VerticalAlignment="Bottom"
+                                                      Margin="4">
+                                                    <Grid.RowDefinitions>
+                                                        <RowDefinition Height="Auto"/>
+                                                        <RowDefinition Height="Auto"/>
+                                                    </Grid.RowDefinitions>
+                                                    <CheckBox x:Name="PhotoCheckBox"
+                                                              Grid.Row="0"
+                                                              HorizontalAlignment="Left"
+                                                              IsChecked="{Binding IsChecked}"
+                                                              IsVisible="{Binding $parent[ItemsControl].((local:MainWindow)DataContext).IsSelectMode}"
+                                                              Background="White"
+                                                              BorderBrush="#CCCCCC"/>
+                                                    <Button Width="28"
+                                                            Height="28"
                                                             Grid.Row="1"
                                                             HorizontalAlignment="Left"
-                                                            Spacing="4"
-                                                            IsVisible="{Binding IsDeleting}">
-                                                    <Button Content="确认删除"
-                                                            FontSize="11"
                                                             Classes="delete-btn"
-                                                            Foreground="White"
-                                                            CornerRadius="4"
-                                                            Padding="8,4"
-                                                            Click="ConfirmDeletePhoto_Click"
-                                                            Tag="{Binding}"/>
-                                                    <Button Content="取消"
-                                                            FontSize="11"
-                                                            Background="#555555"
-                                                            Foreground="White"
-                                                            CornerRadius="4"
-                                                            Padding="8,4"
-                                                            Click="CancelDeletePhoto_Click"
-                                                            Tag="{Binding}"/>
-                                                </StackPanel>
+                                                            CornerRadius="14"
+                                                            Padding="0"
+                                                            Click="DeletePhoto_Click"
+                                                            Tag="{Binding}"
+                                                            IsVisible="{Binding !IsDeleting}">
+                                                        <Viewbox Width="16" Height="16">
+                                                            <Path Fill="White" Data="M5.75 3V1.5h4.5V3zm-1.5 0V1a1 1 0 0 1 1-1h5.5a1 1 0 0 1 1 1v2h2.5a.75.75 0 0 1 0 1.5h-.365l-.743 9.653A2 2 0 0 1 11.148 16H4.852a2 2 0 0 1-1.994-1.847L2.115 4.5H1.75a.75.75 0 0 1 0-1.5zm-.63 1.5h8.76l-.734 9.538a.5.5 0 0 1-.498.462H4.852a.5.5 0 0 1-.498-.462z"/>
+                                                        </Viewbox>
+                                                    </Button>
+                                                    <StackPanel Orientation="Vertical"
+                                                                Grid.Row="1"
+                                                                HorizontalAlignment="Left"
+                                                                Spacing="4"
+                                                                IsVisible="{Binding IsDeleting}">
+                                                        <Button Content="确认删除"
+                                                                FontSize="11"
+                                                                Classes="delete-btn"
+                                                                Foreground="White"
+                                                                CornerRadius="4"
+                                                                Padding="8,4"
+                                                                Click="ConfirmDeletePhoto_Click"
+                                                                Tag="{Binding}"/>
+                                                        <Button Content="取消"
+                                                                FontSize="11"
+                                                                Background="#555555"
+                                                                Foreground="White"
+                                                                CornerRadius="4"
+                                                                Padding="8,4"
+                                                                Click="CancelDeletePhoto_Click"
+                                                                Tag="{Binding}"/>
+                                                    </StackPanel>
+                                                </Grid>
                                             </Grid>
                                         </Grid>
-                                    </Grid>
-                                </Border>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                </ScrollViewer>
-                
-                <Border x:Name="ImportingOverlay"
-                        Background="#E0000000"
-                        IsVisible="False"
-                        VerticalAlignment="Center"
-                        HorizontalAlignment="Center"
-                        CornerRadius="8"
-                        Padding="20,12">
-                    <StackPanel Orientation="Horizontal" Spacing="8">
-                        <ProgressBar IsIndeterminate="True"
-                                     Width="120"
-                                     Height="6"
-                                     HorizontalAlignment="Center"/>
-                        <TextBlock Text="正在导入，请等待..."
-                                   FontSize="14"
-                                   Foreground="White"
-                                   HorizontalAlignment="Center"/>
-                    </StackPanel>
-                </Border>
-            </Grid>
-            
-            <Border Grid.Row="1" 
-                        Background="Transparent" 
-                        Padding="12,8">
-                    <StackPanel Orientation="Vertical" 
-                                HorizontalAlignment="Center" 
-                                Spacing="8">
-                        <StackPanel x:Name="NormalButtons"
-                                    Orientation="Horizontal" 
-                                    HorizontalAlignment="Center" 
-                                    Spacing="16">
-                            <Button x:Name="SavePhotoBtn"
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+
+                    <Border x:Name="ImportingOverlay"
+                            Background="#E0000000"
+                            IsVisible="False"
+                            VerticalAlignment="Center"
+                            HorizontalAlignment="Center"
+                            CornerRadius="8"
+                            Padding="20,12">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <ProgressBar IsIndeterminate="True"
+                                         Width="120"
+                                         Height="6"
+                                         HorizontalAlignment="Center"/>
+                            <TextBlock Text="正在导入，请等待..."
+                                       FontSize="14"
+                                       Foreground="White"
+                                       HorizontalAlignment="Center"/>
+                        </StackPanel>
+                    </Border>
+                </Grid>
+
+                <Border Grid.Row="1"
+                            Background="Transparent"
+                            Padding="12,8">
+                        <StackPanel Orientation="Vertical"
+                                    HorizontalAlignment="Center"
+                                    Spacing="8">
+                            <StackPanel x:Name="NormalButtons"
+                                        Orientation="Horizontal"
+                                        HorizontalAlignment="Center"
+                                        Spacing="16">
+                                <Button x:Name="SavePhotoBtn"
+                                        Classes="nav-btn"
+                                        Click="SavePhotoBtn_Click">
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <local:SvgIcon Width="18" Height="18"
+                                                       IconName="floppy"/>
+                                        <TextBlock Text="保存照片" FontSize="12" Foreground="{DynamicResource ThemeTextSecondary}" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Button>
+
+                                <Button x:Name="ImportPhotoBtn"
+                                        Classes="nav-btn"
+                                        Click="ImportPhotoBtn_Click">
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <local:SvgIcon Width="18" Height="18"
+                                                       IconName="import"/>
+                                        <TextBlock Text="导入" FontSize="12" Foreground="{DynamicResource ThemeTextSecondary}" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Button>
+                            </StackPanel>
+
+                            <StackPanel x:Name="SelectModeButtons"
+                                        Orientation="Horizontal"
+                                        HorizontalAlignment="Center"
+                                        Spacing="12"
+                                        IsVisible="False">
+                                <Button Classes="nav-btn"
+                                        Click="ConfirmSavePhotos_Click">
+                                    <TextBlock Text="确定" FontSize="12" Foreground="{DynamicResource ThemeTextSecondary}" VerticalAlignment="Center"/>
+                                </Button>
+                                <Button Classes="nav-btn"
+                                        Click="CancelSelectMode_Click">
+                                    <TextBlock Text="取消" FontSize="12" Foreground="{DynamicResource ThemeTextSecondary}" VerticalAlignment="Center"/>
+                                </Button>
+                                <Button Classes="nav-btn"
+                                        Click="InvertSelection_Click">
+                                    <TextBlock Text="反选" FontSize="12" Foreground="{DynamicResource ThemeTextSecondary}" VerticalAlignment="Center"/>
+                                </Button>
+                            </StackPanel>
+
+                            <CheckBox x:Name="IncludeInkCheckBox"
+                                      Classes="ink-checkbox"
+                                      Content="保留墨迹注释"
+                                      HorizontalAlignment="Center"
+                                      Margin="0,8,0,0"/>
+                        </StackPanel>
+                    </Border>
+                </Grid>
+
+                <!-- 题目内容（"题目"选项卡选中时显示：OCR 识别已拍照片中的目录信息） -->
+                <Grid Grid.Row="0" x:Name="TitleContentPanel" IsVisible="False">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <ScrollViewer Grid.Row="0" Padding="8" HorizontalScrollBarVisibility="Disabled">
+                        <ItemsControl x:Name="TitleList" ItemsSource="{Binding Titles}" x:CompileBindings="False">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="local:TitleEntry">
+                                    <Button Classes="title-btn"
+                                            Click="TitleButton_Click"
+                                            Tag="{Binding}"
+                                            Margin="{Binding Level, Converter={StaticResource LevelToIndentConverter}}"
+                                            HorizontalAlignment="Stretch"
+                                            HorizontalContentAlignment="Left"
+                                            Padding="10,6">
+                                        <Grid ColumnDefinitions="Auto,*">
+                                            <Border Grid.Column="0"
+                                                    Background="{DynamicResource ThemePrimary}"
+                                                    CornerRadius="4"
+                                                    Padding="5,1"
+                                                    Margin="0,0,8,0"
+                                                    VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding Badge}" FontSize="10" Foreground="White" FontWeight="Bold"/>
+                                            </Border>
+                                            <TextBlock Grid.Column="1"
+                                                       Text="{Binding Display}"
+                                                       FontSize="13"
+                                                       TextTrimming="CharacterEllipsis"
+                                                       VerticalAlignment="Center"/>
+                                        </Grid>
+                                    </Button>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+
+                    <Border Grid.Row="1" Background="Transparent" Padding="12,8">
+                        <StackPanel Orientation="Horizontal"
+                                    HorizontalAlignment="Center"
+                                    Spacing="12">
+                            <Button x:Name="OcrReRunBtn"
                                     Classes="nav-btn"
-                                    Click="SavePhotoBtn_Click">
+                                    Click="OcrReRun_Click">
                                 <StackPanel Orientation="Horizontal" Spacing="8">
-                                    <local:SvgIcon Width="18" Height="18"
-                                                   IconName="floppy"/>
-                                    <TextBlock Text="保存照片" FontSize="12" Foreground="{DynamicResource ThemeTextSecondary}" VerticalAlignment="Center"/>
+                                    <local:SvgIcon Width="18" Height="18" IconName="scan"/>
+                                    <TextBlock Text="重新识别" FontSize="12" Foreground="{DynamicResource ThemeTextSecondary}" VerticalAlignment="Center"/>
                                 </StackPanel>
                             </Button>
-                            
-                            <Button x:Name="ImportPhotoBtn"
+                            <Button x:Name="OcrClearBtn"
                                     Classes="nav-btn"
-                                    Click="ImportPhotoBtn_Click">
-                                <StackPanel Orientation="Horizontal" Spacing="8">
-                                    <local:SvgIcon Width="18" Height="18"
-                                                   IconName="import"/>
-                                    <TextBlock Text="导入" FontSize="12" Foreground="{DynamicResource ThemeTextSecondary}" VerticalAlignment="Center"/>
-                                </StackPanel>
+                                    Click="OcrClear_Click">
+                                <TextBlock Text="清空" FontSize="12" Foreground="{DynamicResource ThemeTextSecondary}" VerticalAlignment="Center"/>
                             </Button>
                         </StackPanel>
-                        
-                        <StackPanel x:Name="SelectModeButtons"
-                                    Orientation="Horizontal" 
-                                    HorizontalAlignment="Center" 
-                                    Spacing="12"
-                                    IsVisible="False">
-                            <Button Classes="nav-btn"
-                                    Click="ConfirmSavePhotos_Click">
-                                <TextBlock Text="确定" FontSize="12" Foreground="{DynamicResource ThemeTextSecondary}" VerticalAlignment="Center"/>
-                            </Button>
-                            <Button Classes="nav-btn"
-                                    Click="CancelSelectMode_Click">
-                                <TextBlock Text="取消" FontSize="12" Foreground="{DynamicResource ThemeTextSecondary}" VerticalAlignment="Center"/>
-                            </Button>
-                            <Button Classes="nav-btn"
-                                    Click="InvertSelection_Click">
-                                <TextBlock Text="反选" FontSize="12" Foreground="{DynamicResource ThemeTextSecondary}" VerticalAlignment="Center"/>
-                            </Button>
+                    </Border>
+
+                    <Border x:Name="OcrOverlay"
+                            Grid.Row="0"
+                            Background="#E0000000"
+                            IsVisible="False"
+                            VerticalAlignment="Center"
+                            HorizontalAlignment="Center"
+                            CornerRadius="8"
+                            Padding="20,12">
+                        <StackPanel Orientation="Vertical" Spacing="8" HorizontalAlignment="Center">
+                            <ProgressBar x:Name="OcrProgressBar"
+                                         IsIndeterminate="False"
+                                         Minimum="0"
+                                         Maximum="100"
+                                         Width="200"
+                                         Height="6"
+                                         HorizontalAlignment="Center"/>
+                            <TextBlock x:Name="OcrStatusText"
+                                       Text="准备中..."
+                                       FontSize="13"
+                                       Foreground="White"
+                                       HorizontalAlignment="Center"/>
                         </StackPanel>
-                        
-                        <CheckBox x:Name="IncludeInkCheckBox"
-                                  Classes="ink-checkbox"
-                                  Content="保留墨迹注释"
-                                  HorizontalAlignment="Center"
-                                  Margin="0,8,0,0"/>
-                    </StackPanel>
+                    </Border>
+                </Grid>
+
+                <!-- Row 1: 底部选择栏（左右排版的选项卡） -->
+                <Border Grid.Row="1"
+                        Background="Transparent"
+                        BorderBrush="Transparent"
+                        BorderThickness="0"
+                        Padding="0">
+                    <Grid ColumnDefinitions="*,*">
+                        <Button x:Name="FileTabBtn"
+                                Grid.Column="0"
+                                Classes="tab-btn active"
+                                Content="文件"
+                                Click="FileTab_Click"/>
+                        <Button x:Name="TitleTabBtn"
+                                Grid.Column="1"
+                                Classes="tab-btn"
+                                Content="题目"
+                                Click="TitleTab_Click"/>
+                    </Grid>
                 </Border>
             </Grid>
         </Border>
@@ -1180,8 +1331,8 @@
                                         <RowDefinition Height="Auto"/>
                                     </Grid.RowDefinitions>
                                     <local:SvgIcon x:Name="TogglePhotoIcon" Grid.Row="0" Width="28" Height="28" HorizontalAlignment="Center"
-                                                   IconName="photo"/>
-                                    <TextBlock x:Name="TogglePhotoLabel" Grid.Row="1" Text="照片" FontSize="10" Foreground="{DynamicResource ThemeTextSecondary}" HorizontalAlignment="Center" Margin="0,4,0,0" Classes="button-text-label"/>
+                                                   IconName="chevron-left"/>
+                                    <TextBlock x:Name="TogglePhotoLabel" Grid.Row="1" Text="展开" FontSize="10" Foreground="{DynamicResource ThemeTextSecondary}" HorizontalAlignment="Center" Margin="0,4,0,0" Classes="button-text-label"/>
                                 </Grid>
                             </Button>
                             

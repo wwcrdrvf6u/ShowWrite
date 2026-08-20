@@ -16,8 +16,10 @@ using Avalonia.VisualTree;
 using OpenCvSharp;
 using SkiaSharp;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Globalization;
 using System.IO;
@@ -58,6 +60,7 @@ namespace ShowWrite
         private Point _nativePinchContentAnchor;
 
         public ObservableCollection<PhotoItem> Photos { get; } = new();
+        public ObservableCollection<TitleEntry> Titles { get; } = new();
 
         private static readonly SKColor[] PenColors = new SKColor[]
         {
@@ -162,6 +165,7 @@ namespace ShowWrite
             InitializeComponent();
             this.WindowState = WindowState.FullScreen;
             this.KeyDown += MainWindow_KeyDown;
+            Photos.CollectionChanged += Photos_CollectionChanged;
 
             _clearSlidePopup = this.FindControl<Popup>("ClearSlidePopup");
             _normalButtons = this.FindControl<StackPanel>("NormalButtons");
@@ -1319,6 +1323,7 @@ namespace ShowWrite
             StopLoadingAnimation();
             _cameraService.StopCapture();
             _cameraService.Dispose();
+            _ocrCts?.Cancel();
 
             // 清理PowerPoint资源
             _whiteboardManager?.ClosePowerPointPresentation();
@@ -1421,29 +1426,31 @@ namespace ShowWrite
                 VideoImage.Source = frameBitmap;
             }
 
-            var frame = _cameraService.LatestFrame;
+            // 高频调用（60fps）：只读尺寸不 Clone Mat。Clone 一帧 BGRA 约 2.7MB，60fps = 162MB/秒
+            // 分配释放压力，会压垮 OpenCV 内存池导致 "Failed to allocate N bytes"。
+            // InkCanvas.SetVideoFrame 也只读 Width/Height 不保存 Mat 引用，所以直接传尺寸即可。
             bool sizeChanged = false;
 
-            if (frame != null && !frame.Empty())
+            if (_cameraService.TryGetLatestFrameSize(out int fw, out int fh))
             {
                 var contentSizeMismatch =
-                    Math.Abs(VideoAreaContainer.Width - frame.Width) > 0.5 ||
-                    Math.Abs(VideoAreaContainer.Height - frame.Height) > 0.5;
+                    Math.Abs(VideoAreaContainer.Width - fw) > 0.5 ||
+                    Math.Abs(VideoAreaContainer.Height - fh) > 0.5;
 
-                if (_videoWidth != frame.Width || _videoHeight != frame.Height)
+                if (_videoWidth != fw || _videoHeight != fh)
                 {
-                    _videoWidth = frame.Width;
-                    _videoHeight = frame.Height;
+                    _videoWidth = fw;
+                    _videoHeight = fh;
                     sizeChanged = true;
                 }
 
                 if (sizeChanged || contentSizeMismatch)
                 {
                     // 从照片模式切回直播时，分辨率可能没变，但容器仍停留在照片尺寸。
-                    SetVideoContentSize(frame.Width, frame.Height);
+                    SetVideoContentSize(fw, fh);
                 }
 
-                InkCanvasOverlay.SetVideoFrame(frame);
+                InkCanvasOverlay.SetVideoSize(fw, fh);
             }
 
             if (centerOnSizeChange || sizeChanged)
@@ -1660,33 +1667,45 @@ namespace ShowWrite
 
         private void Capture_Click(object? sender, RoutedEventArgs e)
         {
+            // GetProcessedFrame 返回独立 Mat 副本（持锁内 clone/ApplyPerspectiveTransform），
+            // CaptureLoop dispose 原始 _latestFrame 不影响本副本；用完必须 Dispose 避免非托管内存泄漏
             var frame = _cameraService.GetProcessedFrame();
             if (frame == null || frame.Empty())
-                return;
-
-            var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
-            var fileName = $"photo_{timestamp}.jpg";
-
-            var dir = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.MyPictures),
-                "ShowWrite");
-
-            Directory.CreateDirectory(dir);
-
-            var path = Path.Combine(dir, fileName);
-            Cv2.ImWrite(path, frame);
-
-            var thumbnail = CreateThumbnail(path);
-
-            Photos.Add(new PhotoItem
             {
-                Index = Photos.Count + 1,
-                FilePath = path,
-                Timestamp = DateTime.Now,
-                Thumbnail = thumbnail
-            });
+                frame?.Dispose();
+                return;
+            }
 
-            ShowNotification("照片已保存");
+            try
+            {
+                var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+                var fileName = $"photo_{timestamp}.jpg";
+
+                var dir = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.MyPictures),
+                    "ShowWrite");
+
+                Directory.CreateDirectory(dir);
+
+                var path = Path.Combine(dir, fileName);
+                Cv2.ImWrite(path, frame);
+
+                var thumbnail = CreateThumbnail(path);
+
+                Photos.Add(new PhotoItem
+                {
+                    Index = Photos.Count + 1,
+                    FilePath = path,
+                    Timestamp = DateTime.Now,
+                    Thumbnail = thumbnail
+                });
+
+                ShowNotification("照片已保存");
+            }
+            finally
+            {
+                frame?.Dispose();
+            }
         }
 
         private void ScanDocument_Click(object? sender, RoutedEventArgs e) { }
@@ -2195,12 +2214,216 @@ namespace ShowWrite
                 _photoPanelOpen = false;
                 await UIAnimations.SlideOutToRight(photoPanel, 280);
                 photoPanel.IsVisible = false;
-                // Revert to original photo state
-                if (label != null) label.Text = "照片";
+                // Revert to expand state
+                if (label != null) label.Text = "展开";
                 if (icon != null)
                 {
-                    icon.IconName = "photo";
+                    icon.IconName = "chevron-left";
                 }
+            }
+        }
+
+        private void FileTab_Click(object? sender, RoutedEventArgs e)
+        {
+            var photoContent = this.FindControl<Grid>("PhotoContentPanel");
+            var titleContent = this.FindControl<Grid>("TitleContentPanel");
+            var fileTab = this.FindControl<Button>("FileTabBtn");
+            var titleTab = this.FindControl<Button>("TitleTabBtn");
+
+            if (photoContent != null) photoContent.IsVisible = true;
+            if (titleContent != null) titleContent.IsVisible = false;
+            if (fileTab != null) fileTab.Classes.Add("active");
+            if (titleTab != null) titleTab.Classes.Remove("active");
+        }
+
+        private void TitleTab_Click(object? sender, RoutedEventArgs e)
+        {
+            var photoContent = this.FindControl<Grid>("PhotoContentPanel");
+            var titleContent = this.FindControl<Grid>("TitleContentPanel");
+            var fileTab = this.FindControl<Button>("FileTabBtn");
+            var titleTab = this.FindControl<Button>("TitleTabBtn");
+
+            if (photoContent != null) photoContent.IsVisible = false;
+            if (titleContent != null) titleContent.IsVisible = true;
+            if (fileTab != null) fileTab.Classes.Remove("active");
+            if (titleTab != null) titleTab.Classes.Add("active");
+        }
+
+        // ---------- OCR 目录识别（新增照片自动识别） ----------
+        private readonly ConcurrentQueue<PhotoItem> _ocrQueue = new();
+        private bool _ocrProcessing;
+        private CancellationTokenSource? _ocrCts;
+
+        /// <summary>照片集合变化：新增照片自动入队 OCR。</summary>
+        private void Photos_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+        {
+            if (e.Action != NotifyCollectionChangedAction.Add) return;
+            var config = Config.Load();
+            if (!config.Ocr.EnableAutoOcr) return;
+
+            if (e.NewItems != null)
+            {
+                foreach (PhotoItem p in e.NewItems)
+                {
+                    if (!string.IsNullOrEmpty(p.FilePath)) _ocrQueue.Enqueue(p);
+                }
+            }
+            KickOcrProcessor();
+        }
+
+        /// <summary>重新识别：清空标题列表，把全部照片重新入队。</summary>
+        private void OcrReRun_Click(object? sender, RoutedEventArgs e)
+        {
+            Titles.Clear();
+            while (_ocrQueue.TryDequeue(out _)) { }
+            foreach (var p in Photos)
+            {
+                if (!string.IsNullOrEmpty(p.FilePath)) _ocrQueue.Enqueue(p);
+            }
+            if (_ocrQueue.IsEmpty)
+            {
+                ShowNotification("没有可识别的照片");
+                return;
+            }
+            KickOcrProcessor();
+        }
+
+        private void OcrClear_Click(object? sender, RoutedEventArgs e)
+        {
+            while (_ocrQueue.TryDequeue(out _)) { }
+            Titles.Clear();
+        }
+
+        /// <summary>启动（如尚未运行）OCR 处理循环。</summary>
+        private void KickOcrProcessor()
+        {
+            if (_ocrProcessing) return;
+            _ocrProcessing = true;
+            _ocrCts?.Cancel();
+            _ocrCts = new CancellationTokenSource();
+            _ = ProcessOcrQueueAsync(_ocrCts.Token);
+        }
+
+        private async Task ProcessOcrQueueAsync(CancellationToken ct)
+        {
+            try
+            {
+                // 1. 确保模型就绪
+                if (!OcrService.Instance.IsModelReady)
+                {
+                    Dispatcher.UIThread.Post(() => SetOcrOverlay(true, "首次使用，正在下载中文识别模型...", 0));
+                    var ready = await OcrService.Instance.EnsureModelsAsync(
+                        new Progress<(int Percent, string Status)>(p =>
+                            Dispatcher.UIThread.Post(() => SetOcrOverlay(true, p.Status, p.Percent))),
+                        ct);
+                    if (!ready)
+                    {
+                        Dispatcher.UIThread.Post(() =>
+                        {
+                            SetOcrOverlay(false, string.Empty, 0);
+                            ShowNotification("模型下载失败，请在 设置 → OCR 中检查或重新下载");
+                        });
+                        return;
+                    }
+                }
+
+                // 2. 初始化引擎（异步：把 RapidOcr 加载4个 ONNX 模型的同步重操作下到线程池，
+                //    否则会阻塞 UI 线程 → 摄像头预览的 DispatcherTimer 失帧、画面停住）
+                var (ok, initError) = await OcrService.Instance.TryInitializeAsync();
+                if (!ok)
+                {
+                    Dispatcher.UIThread.Post(() =>
+                    {
+                        SetOcrOverlay(false, string.Empty, 0);
+                        ShowNotification(initError);
+                    });
+                    return;
+                }
+
+                // 3. 逐张识别（队列驱动，新增照片可持续追加）
+                int done = 0;
+                while (_ocrQueue.TryDequeue(out var photo))
+                {
+                    ct.ThrowIfCancellationRequested();
+                    if (string.IsNullOrEmpty(photo.FilePath)) continue;
+
+                    int current = ++done;
+                    Dispatcher.UIThread.Post(() =>
+                        SetOcrOverlay(true, $"识别中 ({current})", 0));
+
+                    try
+                    {
+                        var lines = await OcrService.Instance.RecognizeAsync(photo.FilePath, ct);
+                        var titles = OcrService.ExtractTitles(lines);
+                        if (titles.Count > 0)
+                        {
+                            Dispatcher.UIThread.Post(() =>
+                            {
+                                foreach (var t in titles)
+                                    Titles.Add(new TitleEntry
+                                    {
+                                        Text = t.Text,
+                                        Level = t.Level,
+                                        Cy = t.Cy,
+                                        PhotoIndex = photo.Index,
+                                        FilePath = photo.FilePath
+                                    });
+                            });
+                        }
+                    }
+                    catch (OperationCanceledException) { throw; }
+                    catch (Exception ex)
+                    {
+                        Dispatcher.UIThread.Post(() =>
+                            ShowNotification($"照片 {photo.Index} 识别失败: {ex.Message}"));
+                    }
+                }
+
+                Dispatcher.UIThread.Post(() =>
+                {
+                    SetOcrOverlay(false, string.Empty, 0);
+                    if (done > 0) ShowNotification("OCR 识别完成");
+                });
+            }
+            catch (OperationCanceledException)
+            {
+                Dispatcher.UIThread.Post(() => SetOcrOverlay(false, string.Empty, 0));
+            }
+            catch (Exception ex)
+            {
+                Dispatcher.UIThread.Post(() =>
+                {
+                    SetOcrOverlay(false, string.Empty, 0);
+                    ShowNotification($"OCR 出错: {ex.Message}");
+                });
+            }
+            finally
+            {
+                _ocrProcessing = false;
+                // 队列处理完立即释放 OCR 引擎：ONNX Runtime 占的几百 MB 内存马上归还，
+                // 避免常驻导致 OpenCV 在虚拟地址空间碎片化下分配失败（"Failed to allocate N bytes"）。
+                // 下次 OCR 触发时 TryInitializeAsync 会惰性重新加载。
+                // 用 Task.Run 下到线程池：dispose 大对象可能耗时，避免阻塞 UI 线程导致摄像头失帧。
+                _ = Task.Run(() =>
+                {
+                    try { OcrService.Instance.ReleaseEngine(); } catch { }
+                    // 强制回收：ORT 非托管内存释放后，托管包装对象需要 GC 才能清理；
+                    // 同时触发析构链路把 SkiaSharp/OpenCV 等关联非托管资源一并回收。
+                    GC.Collect();
+                    GC.WaitForPendingFinalizers();
+                    GC.Collect();
+                });
+            }
+        }
+
+        private void SetOcrOverlay(bool visible, string status, int percent)
+        {
+            if (OcrOverlay != null) OcrOverlay.IsVisible = visible;
+            if (OcrStatusText != null && !string.IsNullOrEmpty(status)) OcrStatusText.Text = status;
+            if (OcrProgressBar != null)
+            {
+                OcrProgressBar.IsIndeterminate = visible && percent == 0;
+                OcrProgressBar.Value = Math.Clamp(percent, 0, 100);
             }
         }
 
@@ -2614,6 +2837,7 @@ namespace ShowWrite
             if (bitmap != null)
             {
                 VideoImage.Source = bitmap;
+                VideoImage.IsVisible = true;
                 SetVideoContentSize(bitmap.Size.Width, bitmap.Size.Height);
                 QueueFitPhotoToViewportHeight();
 
@@ -2625,6 +2849,66 @@ namespace ShowWrite
 
             // 更新光标覆盖层布局
             UpdateCursorCanvasLayout();
+        }
+
+        /// <summary>点击题目标签按钮：切到照片查看模式，打开该照片并定位到标题位置。</summary>
+        private async void TitleButton_Click(object? sender, RoutedEventArgs e)
+        {
+            if (sender is not Button btn || btn.Tag is not TitleEntry entry) return;
+
+            // 1. 切到"文件"标签（显示照片缩略图区）
+            var photoContent = this.FindControl<Grid>("PhotoContentPanel");
+            var titleContent = this.FindControl<Grid>("TitleContentPanel");
+            var fileTab = this.FindControl<Button>("FileTabBtn");
+            var titleTab = this.FindControl<Button>("TitleTabBtn");
+            if (photoContent != null) photoContent.IsVisible = true;
+            if (titleContent != null) titleContent.IsVisible = false;
+            if (fileTab != null) { fileTab.Classes.Add("active"); }
+            if (titleTab != null) { titleTab.Classes.Remove("active"); }
+
+            // 2. 展开右侧照片面板
+            await OpenPhotoPanelAsync();
+
+            // 3. 找到对应照片并进入查看模式
+            var photo = Photos.FirstOrDefault(p => p.Index == entry.PhotoIndex);
+            if (photo == null || string.IsNullOrEmpty(photo.FilePath)) { ShowNotification("找不到对应照片"); return; }
+            foreach (var p in Photos) p.IsSelected = false;
+            photo.IsSelected = true;
+            _selectedPhoto = photo;
+            ShowPhotoForAnnotation(photo);
+
+            // 4. 等布局完成后定位到标题在图中的 y 位置
+            QueueScrollToY(entry.Cy);
+        }
+
+        private void QueueScrollToY(double imgY)
+        {
+            Dispatcher.UIThread.Post(() => ScrollPhotoToY(imgY), DispatcherPriority.Loaded);
+        }
+
+        /// <summary>把照片视口定位/放大到原图 y=imgY 处（按宽放大，标题置于视口上部约 30%）。</summary>
+        private void ScrollPhotoToY(double imgY)
+        {
+            if (!_isPhotoAnnotationMode) return;
+            var contentWidth = VideoAreaContainer.Width;
+            var contentHeight = VideoAreaContainer.Height;
+            var viewportWidth = ZoomBorder.Bounds.Width;
+            var viewportHeight = ZoomBorder.Bounds.Height;
+            if (contentWidth <= 0 || contentHeight <= 0 || viewportWidth <= 0 || viewportHeight <= 0) return;
+
+            // 按宽放大：图宽填满视口宽（竖长图会超出视口高，可垂直定位）
+            double zoom = viewportWidth / contentWidth;
+            double offsetX = 0;
+            // 让 imgY 出现在视口上部 30% 处
+            double targetTop = viewportHeight * 0.3;
+            double offsetY = targetTop - imgY * zoom;
+            // clamp 到不滚出图外
+            double maxUp = -(contentHeight * zoom - viewportHeight); // 图底对齐视口底
+            if (offsetY < maxUp) offsetY = maxUp;
+            if (offsetY > 0) offsetY = 0;
+
+            var matrix = MatrixHelper.ScaleAndTranslate(zoom, zoom, offsetX, offsetY);
+            ZoomBorder.SetMatrix(matrix, true);
         }
 
         private async Task<Bitmap?> LoadBitmapAsync(string path)
@@ -3369,6 +3653,18 @@ namespace ShowWrite
         }
     }
 
+    /// <summary>OCR 提取出的标题条目，用于题目标签页按钮列表与跳转定位。</summary>
+    public class TitleEntry
+    {
+        public string Text { get; set; } = "";
+        public int Level { get; set; }          // 1=大标题 2=中 3=小
+        public double Cy { get; set; }          // 标题在原图中的中心 y 坐标
+        public int PhotoIndex { get; set; }     // 所属照片序号
+        public string? FilePath { get; set; }   // 所属照片路径
+        public string Display => Text;
+        public string Badge => $"P{PhotoIndex}";
+    }
+
     public class PhotoItem : System.ComponentModel.INotifyPropertyChanged
     {
         private bool _isSelected;
@@ -3436,6 +3732,19 @@ namespace ShowWrite
         {
             throw new NotImplementedException();
         }
+    }
+
+    /// <summary>标题层级 → 左边距缩进（Level-1)*16。</summary>
+    public class LevelToIndentConverter : IValueConverter
+    {
+        public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+        {
+            int level = value is int l ? l : 1;
+            if (level < 1) level = 1;
+            return new Thickness((level - 1) * 16, 2, 0, 2);
+        }
+        public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+            => throw new NotImplementedException();
     }
 
     public class SelectedForegroundConverter : IValueConverter

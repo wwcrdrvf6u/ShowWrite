@@ -1,9 +1,12 @@
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.Platform.Storage;
 using Avalonia.Styling;
 using System;
+using System.IO;
 using System.Management;
+using System.Threading;
 
 namespace ShowWrite
 {
@@ -12,6 +15,7 @@ namespace ShowWrite
         private StackPanel? _generalPage;
         private StackPanel? _penPage;
         private StackPanel? _cameraPage;
+        private StackPanel? _ocrPage;
         private StackPanel? _aboutPage;
 
         private NumericUpDown? _denominatorInput;
@@ -27,6 +31,27 @@ namespace ShowWrite
         private ComboBox? _themeComboBox;
         private SplitView? _settingsSplitView;
 
+        private CheckBox? _enableAutoOcrInput;
+        private StackPanel? _ocrModelListPanel;
+        private Button? _ocrRedownloadBtn;
+        private ProgressBar? _ocrDownloadProgress;
+        private TextBlock? _ocrDownloadStatus;
+        private TextBlock? _ocrModelsDirText;
+        private RadioButton? _modelSetMobile;
+        private RadioButton? _modelSetServer;
+        private RadioButton? _modelSetHybrid;
+        private RadioButton? _modelSetCustom;
+        private TextBlock? _modelSetMobileStatus;
+        private TextBlock? _modelSetServerStatus;
+        private TextBlock? _modelSetHybridStatus;
+        private Button? _modelSetMobileDownload;
+        private Button? _modelSetServerDownload;
+        private Button? _modelSetHybridDownload;
+        private StackPanel? _customModelPanel;
+        private TextBox? _customDetInput;
+        private TextBox? _customRecInput;
+        private TextBox? _customDictInput;
+
         public SettingsWindow()
         {
             InitializeComponent();
@@ -38,6 +63,7 @@ namespace ShowWrite
             _generalPage = this.FindControl<StackPanel>("GeneralPage");
             _penPage = this.FindControl<StackPanel>("PenPage");
             _cameraPage = this.FindControl<StackPanel>("CameraPage");
+            _ocrPage = this.FindControl<StackPanel>("OcrPage");
             _aboutPage = this.FindControl<StackPanel>("AboutPage");
 
             _denominatorInput = this.FindControl<NumericUpDown>("DenominatorInput");
@@ -53,9 +79,32 @@ namespace ShowWrite
             _themeComboBox = this.FindControl<ComboBox>("ThemeComboBox");
             _settingsSplitView = this.FindControl<SplitView>("SettingsSplitView");
 
+            _enableAutoOcrInput = this.FindControl<CheckBox>("EnableAutoOcrInput");
+            _ocrModelListPanel = this.FindControl<StackPanel>("OcrModelListPanel");
+            _ocrRedownloadBtn = this.FindControl<Button>("OcrRedownloadBtn");
+            _ocrDownloadProgress = this.FindControl<ProgressBar>("OcrDownloadProgress");
+            _ocrDownloadStatus = this.FindControl<TextBlock>("OcrDownloadStatus");
+            _ocrModelsDirText = this.FindControl<TextBlock>("OcrModelsDirText");
+            _modelSetMobile = this.FindControl<RadioButton>("ModelSetMobile");
+            _modelSetServer = this.FindControl<RadioButton>("ModelSetServer");
+            _modelSetHybrid = this.FindControl<RadioButton>("ModelSetHybrid");
+            _modelSetCustom = this.FindControl<RadioButton>("ModelSetCustom");
+            _modelSetMobileStatus = this.FindControl<TextBlock>("ModelSetMobileStatus");
+            _modelSetServerStatus = this.FindControl<TextBlock>("ModelSetServerStatus");
+            _modelSetHybridStatus = this.FindControl<TextBlock>("ModelSetHybridStatus");
+            _modelSetMobileDownload = this.FindControl<Button>("ModelSetMobileDownload");
+            _modelSetServerDownload = this.FindControl<Button>("ModelSetServerDownload");
+            _modelSetHybridDownload = this.FindControl<Button>("ModelSetHybridDownload");
+            _customModelPanel = this.FindControl<StackPanel>("CustomModelPanel");
+            _customDetInput = this.FindControl<TextBox>("CustomDetInput");
+            _customRecInput = this.FindControl<TextBox>("CustomRecInput");
+            _customDictInput = this.FindControl<TextBox>("CustomDictInput");
+
             LoadPenSettings();
             LoadThemeSettings();
             LoadSystemInfo();
+            LoadOcrSettings();
+            RefreshOcrStatus();
         }
 
         private void TogglePane_Click(object? sender, RoutedEventArgs e)
@@ -86,6 +135,11 @@ namespace ShowWrite
             if (_generalPage != null) _generalPage.IsVisible = tag == "general";
             if (_penPage != null) _penPage.IsVisible = tag == "pen";
             if (_cameraPage != null) _cameraPage.IsVisible = tag == "camera";
+            if (_ocrPage != null)
+            {
+                _ocrPage.IsVisible = tag == "ocr";
+                if (tag == "ocr") RefreshOcrStatus();
+            }
             if (_aboutPage != null) _aboutPage.IsVisible = tag == "about";
         }
 
@@ -137,6 +191,9 @@ namespace ShowWrite
             if (_enablePalmEraserInput != null) config.PenSettings.EnablePalmEraser = _enablePalmEraserInput.IsChecked ?? true;
             if (_palmEraserThresholdInput != null) config.PenSettings.PalmEraserThreshold = (double)_palmEraserThresholdInput.Value;
 
+            config.Ocr ??= new OcrSettings();
+            if (_enableAutoOcrInput != null) config.Ocr.EnableAutoOcr = _enableAutoOcrInput.IsChecked ?? true;
+
             if (_themeComboBox != null)
             {
                 var selectedItem = _themeComboBox.SelectedItem as ComboBoxItem;
@@ -177,6 +234,209 @@ namespace ShowWrite
             if (_ratioChangeCoefficientInput != null) _ratioChangeCoefficientInput.Value = (decimal)defaultSettings.RatioChangeCoefficient;
             if (_enablePalmEraserInput != null) _enablePalmEraserInput.IsChecked = defaultSettings.EnablePalmEraser;
             if (_palmEraserThresholdInput != null) _palmEraserThresholdInput.Value = (decimal)defaultSettings.PalmEraserThreshold;
+        }
+
+        // ---------- OCR 模型管理 ----------
+        private void LoadOcrSettings()
+        {
+            var config = Config.Load();
+            config.Ocr ??= new OcrSettings();
+            if (_enableAutoOcrInput != null) _enableAutoOcrInput.IsChecked = config.Ocr.EnableAutoOcr;
+            if (_ocrModelsDirText != null) _ocrModelsDirText.Text = OcrService.ModelsRoot;
+            if (_customDetInput != null) _customDetInput.Text = config.Ocr.CustomDetPath ?? "";
+            if (_customRecInput != null) _customRecInput.Text = config.Ocr.CustomRecPath ?? "";
+            if (_customDictInput != null) _customDictInput.Text = config.Ocr.CustomDictPath ?? "";
+
+            ApplyModelSetSelection(config.Ocr.ModelSet);
+            UpdateModelSetStatuses();
+            RefreshOcrStatus();
+        }
+
+        private void ApplyModelSetSelection(string key)
+        {
+            var custom = key == "custom";
+            if (_modelSetMobile != null) _modelSetMobile.IsChecked = key == "v4-mobile";
+            if (_modelSetServer != null) _modelSetServer.IsChecked = key == "v4-server";
+            if (_modelSetHybrid != null) _modelSetHybrid.IsChecked = key == "v4-hybrid";
+            if (_modelSetCustom != null) _modelSetCustom.IsChecked = custom;
+            if (_customModelPanel != null) _customModelPanel.IsVisible = custom;
+        }
+
+        private void UpdateModelSetStatuses()
+        {
+            var cfg = Config.Load().Ocr;
+
+            var primaryBrush = Avalonia.Application.Current?.FindResource("ThemeTextPrimary") as Avalonia.Media.IBrush;
+            void UpdatePaddle(RadioButton? radio, TextBlock? status, Button? dlBtn, string key)
+            {
+                var downloaded = OcrService.Instance.IsSetDownloaded(key);
+                var active = cfg.ModelSet == key;
+                if (status != null)
+                    status.Text = downloaded ? (active ? "✓ 当前 · 已下载" : "✓ 已下载") : "未下载";
+                if (dlBtn != null)
+                    dlBtn.Content = new TextBlock { Text = downloaded ? "重新下载" : "下载", FontSize = 12, Foreground = primaryBrush, VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center };
+            }
+            UpdatePaddle(_modelSetMobile, _modelSetMobileStatus, _modelSetMobileDownload, "v4-mobile");
+            UpdatePaddle(_modelSetServer, _modelSetServerStatus, _modelSetServerDownload, "v4-server");
+            UpdatePaddle(_modelSetHybrid, _modelSetHybridStatus, _modelSetHybridDownload, "v4-hybrid");
+        }
+
+        /// <summary>选择某个模型集（单选切换）。</summary>
+        private void ModelSetRadio_Click(object? sender, RoutedEventArgs e)
+        {
+            var config = Config.Load();
+            config.Ocr ??= new OcrSettings();
+
+            string key = sender == _modelSetServer ? "v4-server"
+                       : sender == _modelSetHybrid ? "v4-hybrid"
+                       : sender == _modelSetCustom ? "custom"
+                       : "v4-mobile";
+            // 切到 custom 时，先把自定义路径写回
+            if (key == "custom")
+            {
+                if (_customDetInput != null) config.Ocr.CustomDetPath = string.IsNullOrWhiteSpace(_customDetInput.Text) ? null : _customDetInput.Text;
+                if (_customRecInput != null) config.Ocr.CustomRecPath = string.IsNullOrWhiteSpace(_customRecInput.Text) ? null : _customRecInput.Text;
+                if (_customDictInput != null) config.Ocr.CustomDictPath = string.IsNullOrWhiteSpace(_customDictInput.Text) ? null : _customDictInput.Text;
+            }
+            config.Ocr.ModelSet = key;
+            config.Save();
+            ApplyModelSetSelection(key);
+            UpdateModelSetStatuses();
+            RefreshOcrStatus();
+        }
+
+        /// <summary>下载指定模型集。</summary>
+        private void ModelSetDownload_Click(object? sender, RoutedEventArgs e)
+        {
+            if (sender is Button b && b.Tag is string key)
+                _ = DownloadSetAsync(key);
+        }
+
+        /// <summary>重新下载当前活动模型集。</summary>
+        private void OcrRedownload_Click(object? sender, RoutedEventArgs e)
+        {
+            var cfg = Config.Load().Ocr;
+            var key = cfg.ModelSet;
+            if (key == "custom")
+            {
+                if (_ocrDownloadStatus != null) { _ocrDownloadStatus.IsVisible = true; _ocrDownloadStatus.Text = "自定义模式不提供下载，请用浏览按钮指定本地文件"; }
+                return;
+            }
+            _ = DownloadSetAsync(key);
+        }
+
+        private async System.Threading.Tasks.Task DownloadSetAsync(string key)
+        {
+            if (_modelSetMobileDownload != null) _modelSetMobileDownload.IsEnabled = false;
+            if (_modelSetServerDownload != null) _modelSetServerDownload.IsEnabled = false;
+            if (_modelSetHybridDownload != null) _modelSetHybridDownload.IsEnabled = false;
+            if (_ocrRedownloadBtn != null) _ocrRedownloadBtn.IsEnabled = false;
+            if (_ocrDownloadProgress != null) { _ocrDownloadProgress.IsVisible = true; _ocrDownloadProgress.IsIndeterminate = true; _ocrDownloadProgress.Value = 0; }
+            if (_ocrDownloadStatus != null) { _ocrDownloadStatus.IsVisible = true; _ocrDownloadStatus.Text = "准备下载..."; }
+
+            try
+            {
+                var progress = new Progress<(int Percent, string Status)>(p =>
+                {
+                    if (_ocrDownloadProgress != null) { _ocrDownloadProgress.IsIndeterminate = p.Percent <= 0; _ocrDownloadProgress.Value = p.Percent; }
+                    if (_ocrDownloadStatus != null) _ocrDownloadStatus.Text = p.Status;
+                });
+
+                bool ok = await OcrService.Instance.DownloadSetAsync(key, progress, CancellationToken.None);
+
+                if (_ocrDownloadProgress != null) { _ocrDownloadProgress.IsIndeterminate = false; _ocrDownloadProgress.Value = ok ? 100 : 0; }
+                if (_ocrDownloadStatus != null) _ocrDownloadStatus.Text = ok ? "下载完成" : "下载失败，请检查网络";
+            }
+            catch (Exception ex)
+            {
+                if (_ocrDownloadStatus != null) _ocrDownloadStatus.Text = $"出错: {ex.Message}";
+            }
+            finally
+            {
+                if (_modelSetMobileDownload != null) _modelSetMobileDownload.IsEnabled = true;
+                if (_modelSetServerDownload != null) _modelSetServerDownload.IsEnabled = true;
+                if (_modelSetHybridDownload != null) _modelSetHybridDownload.IsEnabled = true;
+                if (_ocrRedownloadBtn != null) _ocrRedownloadBtn.IsEnabled = true;
+                UpdateModelSetStatuses();
+                RefreshOcrStatus();
+            }
+        }
+
+        /// <summary>浏览选择自定义模型文件。</summary>
+        private async void BrowseCustom_Click(object? sender, RoutedEventArgs e)
+        {
+            if (sender is not Button b || b.Tag is not string which) return;
+            var stor = TopLevel.GetTopLevel(this)?.StorageProvider;
+            if (stor == null) return;
+            var filters = which == "dict"
+                ? new[] { new FilePickerFileType("文本文件") { Patterns = new[] { "*.txt" } } }
+                : new[] { new FilePickerFileType("ONNX 模型") { Patterns = new[] { "*.onnx" } } };
+            var files = await stor.OpenFilePickerAsync(new FilePickerOpenOptions
+            {
+                Title = which == "dict" ? "选择字典文件" : "选择 ONNX 模型文件",
+                AllowMultiple = false,
+                FileTypeFilter = filters
+            });
+            if (files.Count == 0) return;
+            var path = files[0].Path.LocalPath;
+            switch (which)
+            {
+                case "det": if (_customDetInput != null) _customDetInput.Text = path; break;
+                case "rec": if (_customRecInput != null) _customRecInput.Text = path; break;
+                case "dict": if (_customDictInput != null) _customDictInput.Text = path; break;
+            }
+            // 选择文件后立即落到配置（保持 custom 选中状态）
+            var config = Config.Load();
+            config.Ocr ??= new OcrSettings();
+            if (which == "det") config.Ocr.CustomDetPath = path;
+            if (which == "rec") config.Ocr.CustomRecPath = path;
+            if (which == "dict") config.Ocr.CustomDictPath = path;
+            config.Ocr.ModelSet = "custom";
+            config.Save();
+            ApplyModelSetSelection("custom");
+            UpdateModelSetStatuses();
+            RefreshOcrStatus();
+        }
+
+        /// <summary>刷新当前活动模型文件状态列表。</summary>
+        private void RefreshOcrStatus()
+        {
+            if (_ocrModelListPanel == null) return;
+            _ocrModelListPanel.Children.Clear();
+
+            foreach (var (name, path, ready, size) in OcrService.Instance.GetModelStatus())
+            {
+                var row = new Grid { ColumnDefinitions = new ColumnDefinitions("180,*,Auto") };
+                var n = new TextBlock
+                {
+                    Text = name,
+                    Foreground = Avalonia.Application.Current?.FindResource("ThemeTextSecondary") as Avalonia.Media.IBrush,
+                    FontSize = 13,
+                    VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center
+                };
+                n.SetValue(Grid.ColumnProperty, 0);
+                var p = new TextBlock
+                {
+                    Text = string.IsNullOrEmpty(path) ? "(未设置)" : path,
+                    Foreground = Avalonia.Application.Current?.FindResource("ThemeTextTertiary") as Avalonia.Media.IBrush,
+                    FontSize = 11,
+                    VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center,
+                    TextTrimming = Avalonia.Media.TextTrimming.CharacterEllipsis
+                };
+                p.SetValue(Grid.ColumnProperty, 1);
+                var s = new TextBlock
+                {
+                    Text = ready ? (size > 0 ? $"✓ {size / 1024.0 / 1024.0:F2} MB" : "✓") : "✗ 缺失",
+                    Foreground = Avalonia.Application.Current?.FindResource(ready ? "ThemePrimary" : "ThemeTextTertiary") as Avalonia.Media.IBrush,
+                    FontSize = 12,
+                    VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center
+                };
+                s.SetValue(Grid.ColumnProperty, 2);
+                row.Children.Add(n);
+                row.Children.Add(p);
+                row.Children.Add(s);
+                _ocrModelListPanel.Children.Add(row);
+            }
         }
 
         private void LoadSystemInfo()

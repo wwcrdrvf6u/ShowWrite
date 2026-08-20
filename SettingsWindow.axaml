@@ -147,7 +147,16 @@
                                 <TextBlock Text="摄像头" FontSize="14" Foreground="{DynamicResource ThemeTextSecondary}" VerticalAlignment="Center"/>
                             </StackPanel>
                         </ListBoxItem>
-                        
+
+                        <ListBoxItem Classes="nav-item" Tag="ocr">
+                            <StackPanel Orientation="Horizontal" Spacing="12">
+                                <Viewbox Width="20" Height="20">
+                                    <Path Fill="{DynamicResource ThemeTextPrimary}" Data="M3 5h18v2H3V5zm0 4h18v2H3V9zm6 4h12v2H9v-2zm0 4h12v2H9v-2zM3 13h4v8H3v-8z"/>
+                                </Viewbox>
+                                <TextBlock Text="OCR" FontSize="14" Foreground="{DynamicResource ThemeTextSecondary}" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </ListBoxItem>
+
                         <ListBoxItem Classes="nav-item" Tag="about">
                             <StackPanel Orientation="Horizontal" Spacing="12">
                                 <Viewbox Width="20" Height="20">
@@ -271,6 +280,112 @@
                             <StackPanel x:Name="CameraPage" IsVisible="False" Spacing="16">
                                 <TextBlock Text="摄像头设置" Classes="setting-title"/>
                                 <TextBlock Text="摄像头设置内容待添加..." Foreground="{DynamicResource ThemeTextTertiary}"/>
+                            </StackPanel>
+
+                            <StackPanel x:Name="OcrPage" IsVisible="False" Spacing="16">
+                                <TextBlock Text="OCR 模型管理" Classes="setting-title"/>
+
+                                <Border Background="{DynamicResource ThemeSurface}" CornerRadius="8" Padding="16">
+                                    <StackPanel Spacing="12">
+                                        <Grid ColumnDefinitions="Auto,*">
+                                            <TextBlock Grid.Column="0" Text="引擎" Classes="setting-label" Width="140"/>
+                                            <TextBlock Grid.Column="1" Text="PaddleOCR PP-OCRv5 中文 (RapidOcrNet)" Foreground="{DynamicResource ThemeTextSecondary}" FontSize="13" VerticalAlignment="Center"/>
+                                        </Grid>
+                                        <Grid ColumnDefinitions="Auto,*">
+                                            <TextBlock Grid.Column="0" Text="新增照片自动识别" Classes="setting-label" Width="140"/>
+                                            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                                                <CheckBox x:Name="EnableAutoOcrInput" IsChecked="True"/>
+                                                <TextBlock Text="(拍照/导入后自动 OCR)" Foreground="{DynamicResource ThemeTextTertiary}" VerticalAlignment="Center" FontSize="11"/>
+                                            </StackPanel>
+                                        </Grid>
+                                        <Grid ColumnDefinitions="Auto,*">
+                                            <TextBlock Grid.Column="0" Text="模型存放目录" Classes="setting-label" Width="140"/>
+                                            <TextBlock x:Name="OcrModelsDirText" Grid.Column="1" Text="" Foreground="{DynamicResource ThemeTextTertiary}" FontSize="11" VerticalAlignment="Center" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"/>
+                                        </Grid>
+                                    </StackPanel>
+                                </Border>
+
+                                <Border Background="{DynamicResource ThemeSurface}" CornerRadius="8" Padding="16">
+                                    <StackPanel Spacing="10">
+                                        <TextBlock Text="模型库" Foreground="{DynamicResource ThemeTextSecondary}" FontSize="14" FontWeight="Bold" Margin="0,0,0,4"/>
+
+                                        <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+                                            <RadioButton x:Name="ModelSetMobile" Grid.Column="0" GroupName="OcrModelSet" VerticalAlignment="Center" Click="ModelSetRadio_Click"/>
+                                            <StackPanel Grid.Column="1" Spacing="2">
+                                                <TextBlock Text="PP-OCRv4 手机版" FontSize="13" Foreground="{DynamicResource ThemeTextPrimary}"/>
+                                                <TextBlock Text="快速 · 约 10MB" FontSize="11" Foreground="{DynamicResource ThemeTextTertiary}"/>
+                                            </StackPanel>
+                                            <TextBlock x:Name="ModelSetMobileStatus" Grid.Column="2" Text="" FontSize="11" VerticalAlignment="Center" Margin="0,0,12,0"/>
+                                            <Button x:Name="ModelSetMobileDownload" Grid.Column="3" Classes="reset-btn" Click="ModelSetDownload_Click" Tag="v4-mobile" Padding="12,4">
+                                                <TextBlock Text="下载" FontSize="12" Foreground="{DynamicResource ThemeTextPrimary}" VerticalAlignment="Center"/>
+                                            </Button>
+                                        </Grid>
+
+                                        <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+                                            <RadioButton x:Name="ModelSetServer" Grid.Column="0" GroupName="OcrModelSet" VerticalAlignment="Center" Click="ModelSetRadio_Click"/>
+                                            <StackPanel Grid.Column="1" Spacing="2">
+                                                <TextBlock Text="PP-OCRv4 服务器版" FontSize="13" Foreground="{DynamicResource ThemeTextPrimary}"/>
+                                                <TextBlock Text="约 80MB · 服务器版 det 在本库后处理不兼容（0 框），不推荐" FontSize="11" Foreground="{DynamicResource ThemeTextTertiary}"/>
+                                            </StackPanel>
+                                            <TextBlock x:Name="ModelSetServerStatus" Grid.Column="2" Text="" FontSize="11" VerticalAlignment="Center" Margin="0,0,12,0"/>
+                                            <Button x:Name="ModelSetServerDownload" Grid.Column="3" Classes="reset-btn" Click="ModelSetDownload_Click" Tag="v4-server" Padding="12,4">
+                                                <TextBlock Text="下载" FontSize="12" Foreground="{DynamicResource ThemeTextPrimary}" VerticalAlignment="Center"/>
+                                            </Button>
+                                        </Grid>
+
+                                        <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+                                            <RadioButton x:Name="ModelSetHybrid" Grid.Column="0" GroupName="OcrModelSet" VerticalAlignment="Center" Click="ModelSetRadio_Click"/>
+                                            <StackPanel Grid.Column="1" Spacing="2">
+                                                <TextBlock Text="PP-OCRv4 混合版（推荐）" FontSize="13" Foreground="{DynamicResource ThemeTextPrimary}"/>
+                                                <TextBlock Text="约 90MB · mobile 检测 + server 识别，兼顾速度与精度" FontSize="11" Foreground="{DynamicResource ThemeTextTertiary}"/>
+                                            </StackPanel>
+                                            <TextBlock x:Name="ModelSetHybridStatus" Grid.Column="2" Text="" FontSize="11" VerticalAlignment="Center" Margin="0,0,12,0"/>
+                                            <Button x:Name="ModelSetHybridDownload" Grid.Column="3" Classes="reset-btn" Click="ModelSetDownload_Click" Tag="v4-hybrid" Padding="12,4">
+                                                <TextBlock Text="下载" FontSize="12" Foreground="{DynamicResource ThemeTextPrimary}" VerticalAlignment="Center"/>
+                                            </Button>
+                                        </Grid>
+
+                                        <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+                                            <RadioButton x:Name="ModelSetCustom" Grid.Column="0" GroupName="OcrModelSet" VerticalAlignment="Center" Click="ModelSetRadio_Click"/>
+                                            <StackPanel Grid.Column="1" Spacing="2">
+                                                <TextBlock Text="自定义模型路径" FontSize="13" Foreground="{DynamicResource ThemeTextPrimary}"/>
+                                                <TextBlock Text="指定本地 det/rec/dict onnx 文件" FontSize="11" Foreground="{DynamicResource ThemeTextTertiary}"/>
+                                            </StackPanel>
+                                        </Grid>
+
+                                        <StackPanel x:Name="CustomModelPanel" IsVisible="False" Spacing="6" Margin="24,4,0,0">
+                                            <Grid ColumnDefinitions="60,*,Auto">
+                                                <TextBlock Grid.Column="0" Text="det" FontSize="12" VerticalAlignment="Center" Foreground="{DynamicResource ThemeTextSecondary}"/>
+                                                <TextBox x:Name="CustomDetInput" Grid.Column="1" IsReadOnly="True" Watermark="检测模型 .onnx"/>
+                                                <Button Grid.Column="2" Classes="reset-btn" Click="BrowseCustom_Click" Tag="det" Padding="12,4" Margin="6,0,0,0"><TextBlock Text="..." VerticalAlignment="Center"/></Button>
+                                            </Grid>
+                                            <Grid ColumnDefinitions="60,*,Auto">
+                                                <TextBlock Grid.Column="0" Text="rec" FontSize="12" VerticalAlignment="Center" Foreground="{DynamicResource ThemeTextSecondary}"/>
+                                                <TextBox x:Name="CustomRecInput" Grid.Column="1" IsReadOnly="True" Watermark="识别模型 .onnx"/>
+                                                <Button Grid.Column="2" Classes="reset-btn" Click="BrowseCustom_Click" Tag="rec" Padding="12,4" Margin="6,0,0,0"><TextBlock Text="..." VerticalAlignment="Center"/></Button>
+                                            </Grid>
+                                            <Grid ColumnDefinitions="60,*,Auto">
+                                                <TextBlock Grid.Column="0" Text="dict" FontSize="12" VerticalAlignment="Center" Foreground="{DynamicResource ThemeTextSecondary}"/>
+                                                <TextBox x:Name="CustomDictInput" Grid.Column="1" IsReadOnly="True" Watermark="字典 .txt（可留空用自带）"/>
+                                                <Button Grid.Column="2" Classes="reset-btn" Click="BrowseCustom_Click" Tag="dict" Padding="12,4" Margin="6,0,0,0"><TextBlock Text="..." VerticalAlignment="Center"/></Button>
+                                            </Grid>
+                                            <TextBlock Text="cls（方向分类）默认用自带，如需自定义请编辑配置文件" FontSize="10" Foreground="{DynamicResource ThemeTextTertiary}" TextWrapping="Wrap"/>
+                                        </StackPanel>
+
+                                        <ProgressBar x:Name="OcrDownloadProgress" IsVisible="False" Height="6" Minimum="0" Maximum="100" Margin="0,8,0,0"/>
+                                        <TextBlock x:Name="OcrDownloadStatus" IsVisible="False" FontSize="12" Foreground="{DynamicResource ThemeTextTertiary}"/>
+                                    </StackPanel>
+                                </Border>
+
+                                <Border Background="{DynamicResource ThemeSurface}" CornerRadius="8" Padding="16">
+                                    <StackPanel Spacing="8">
+                                        <TextBlock Text="当前模型文件" Foreground="{DynamicResource ThemeTextSecondary}" FontSize="14" FontWeight="Bold" Margin="0,0,0,4"/>
+                                        <StackPanel x:Name="OcrModelListPanel" Spacing="4"/>
+                                        <Button x:Name="OcrRedownloadBtn" Classes="reset-btn" Click="OcrRedownload_Click" Margin="0,8,0,0" HorizontalAlignment="Left">
+                                            <TextBlock Text="重新下载当前模型集" Foreground="{DynamicResource ThemeTextPrimary}" VerticalAlignment="Center"/>
+                                        </Button>
+                                    </StackPanel>
+                                </Border>
                             </StackPanel>
                             
                             <StackPanel x:Name="AboutPage" IsVisible="False" Spacing="16">

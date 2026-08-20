@@ -44,6 +44,22 @@ namespace ShowWrite
         public int RecordingDurationMinutes { get; set; } = 5;
     }
 
+    public class OcrSettings
+    {
+        public bool EnableAutoOcr { get; set; } = true;
+        // 当前选用的模型集 Key（v4-mobile / v4-server / custom）
+        public string ModelSet { get; set; } = "v4-mobile";
+        // 是否启用版面分析（PicoDet 中文版面模型，识别标题/正文/表格区域；关闭则用字号聚类猜标题）
+        public bool EnableLayout { get; set; } = true;
+        // 版面分析模型 Key（picodet-layout-ch = PicoDet 中文 11 类）
+        public string LayoutModel { get; set; } = "picodet-layout-ch";
+        // 自定义模型路径（ModelSet=="custom" 时生效；cls 留空则用自带）
+        public string? CustomDetPath { get; set; }
+        public string? CustomRecPath { get; set; }
+        public string? CustomDictPath { get; set; }
+        public string? CustomClsPath { get; set; }
+    }
+
     public class Config
     {
         public List<int> AvailableCameraIndices { get; set; } = new();
@@ -55,6 +71,7 @@ namespace ShowWrite
         public List<string> EnabledPlugins { get; set; } = new();
         public string Theme { get; set; } = "Dark";
         public RandomNoteConfig RandomNote { get; set; } = new RandomNoteConfig();
+        public OcrSettings Ocr { get; set; } = new OcrSettings();
 
         private static readonly string ConfigPath = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
