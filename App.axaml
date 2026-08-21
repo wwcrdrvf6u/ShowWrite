@@ -8,7 +8,7 @@
     </Application.Styles>
 	<TrayIcon.Icons>
 		<TrayIcons>
-			<TrayIcon Icon="/icon-d1tools.com.ico"
+			<TrayIcon Icon="/SW新圆角logo_256x256.ico"
 					  ToolTipText="闪记"
 					  IsVisible="False">
 				<TrayIcon.Menu>

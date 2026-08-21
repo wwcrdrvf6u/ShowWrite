@@ -13,7 +13,7 @@
 	</PropertyGroup>
 	<PropertyGroup Label="Avalonia">
 		<AvaloniaXamlIlDebuggerLaunch>False</AvaloniaXamlIlDebuggerLaunch>
-		<ApplicationIcon>icon-d1tools.com.ico</ApplicationIcon>
+		<ApplicationIcon>SW新圆角logo_256x256.ico</ApplicationIcon>
 		<PlatformTarget>AnyCPU</PlatformTarget>
 	</PropertyGroup>
 	<ItemGroup>
@@ -27,13 +27,17 @@
 	  <None Remove="Plugins\**" />
 	</ItemGroup>
 	<ItemGroup>
-		<AvaloniaResource Include="icon-d1tools.com.ico" />
+		<AvaloniaResource Include="SW新圆角logo_256x256.ico" />
 	</ItemGroup>
 
 	<ItemGroup>
 		<AvaloniaResource Include="font\**\*.ttf">
 			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 		</AvaloniaResource>
+	</ItemGroup>
+
+	<ItemGroup>
+	  <Content Include="SW新圆角logo_256x256.ico" />
 	</ItemGroup>
 
 	<ItemGroup>

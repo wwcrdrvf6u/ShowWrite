@@ -54,11 +54,15 @@ namespace ShowWrite
             // det：DetName/DetUrl 为 null 表示用 NuGet 自带的 mobile 检测模型
             public string? DetName { get; set; }
             public string? DetUrl { get; set; }
+            // cls：ClsName/ClsUrl 为 null 表示用 NuGet 自带的分类模型（发布时可能缺失）
+            public string? ClsName { get; set; }
+            public string? ClsUrl { get; set; }
             public string RecName { get; set; } = "";
             public string RecUrl { get; set; } = "";
             public string DictName { get; set; } = DefaultDictName;
             public string DictUrl { get; set; } = DefaultDictUrl;
             public bool DetBundled => DetUrl == null;
+            public bool ClsBundled => ClsUrl == null;
         }
 
         /// <summary>可选模型集目录。采用 PP-OCRv4 中文（rec 与 ppocr_keys_v1.txt 字典配套，不乱码）。</summary>
@@ -72,6 +76,8 @@ namespace ShowWrite
                 SizeMB = 10,
                 DetName = "ch_PP-OCRv4_det_mobile.onnx",
                 DetUrl = "https://www.modelscope.cn/models/RapidAI/RapidOCR/resolve/v3.9.2/onnx/PP-OCRv4/det/ch_PP-OCRv4_det_mobile.onnx",
+                ClsName = "ch_PP-LCNet_x0_25_textline_ori_cls_mobile.onnx",
+                ClsUrl = "https://www.modelscope.cn/models/RapidAI/RapidOCR/resolve/v3.9.2/onnx/PP-OCRv5/cls/ch_PP-LCNet_x0_25_textline_ori_cls_mobile.onnx",
                 RecName = "ch_PP-OCRv4_rec_mobile.onnx",
                 RecUrl = "https://www.modelscope.cn/models/RapidAI/RapidOCR/resolve/v3.9.2/onnx/PP-OCRv4/rec/ch_PP-OCRv4_rec_mobile.onnx",
             },
@@ -79,10 +85,12 @@ namespace ShowWrite
             {
                 Key = "v4-server",
                 Name = "PP-OCRv4 服务器版",
-                Desc = "高精度，约 80MB（推荐）",
+                Desc = "高精度，约 80MB",
                 SizeMB = 80,
                 DetName = "ch_PP-OCRv4_det_server.onnx",
                 DetUrl = "https://www.modelscope.cn/models/RapidAI/RapidOCR/resolve/v3.9.2/onnx/PP-OCRv4/det/ch_PP-OCRv4_det_server.onnx",
+                ClsName = "ch_PP-LCNet_x0_25_textline_ori_cls_mobile.onnx",
+                ClsUrl = "https://www.modelscope.cn/models/RapidAI/RapidOCR/resolve/v3.9.2/onnx/PP-OCRv5/cls/ch_PP-LCNet_x0_25_textline_ori_cls_mobile.onnx",
                 RecName = "ch_PP-OCRv4_rec_server.onnx",
                 RecUrl = "https://www.modelscope.cn/models/RapidAI/RapidOCR/resolve/v3.9.2/onnx/PP-OCRv4/rec/ch_PP-OCRv4_rec_server.onnx",
             },
@@ -96,6 +104,8 @@ namespace ShowWrite
                 SizeMB = 90,
                 DetName = "ch_PP-OCRv4_det_mobile.onnx",
                 DetUrl = "https://www.modelscope.cn/models/RapidAI/RapidOCR/resolve/v3.9.2/onnx/PP-OCRv4/det/ch_PP-OCRv4_det_mobile.onnx",
+                ClsName = "ch_PP-LCNet_x0_25_textline_ori_cls_mobile.onnx",
+                ClsUrl = "https://www.modelscope.cn/models/RapidAI/RapidOCR/resolve/v3.9.2/onnx/PP-OCRv5/cls/ch_PP-LCNet_x0_25_textline_ori_cls_mobile.onnx",
                 RecName = "ch_PP-OCRv4_rec_server.onnx",
                 RecUrl = "https://www.modelscope.cn/models/RapidAI/RapidOCR/resolve/v3.9.2/onnx/PP-OCRv4/rec/ch_PP-OCRv4_rec_server.onnx",
             },
@@ -136,6 +146,13 @@ namespace ShowWrite
             var cfg = Config.Load().Ocr;
             if (cfg.ModelSet == "custom" && !string.IsNullOrWhiteSpace(cfg.CustomClsPath))
                 return cfg.CustomClsPath!;
+            var set = FindSet(cfg.ModelSet) ?? Catalog[0];
+            // 模型集配了 cls 下载 URL：优先用 SetDir 里下载的，找不到才回退 NuGet 自带的
+            if (!set.ClsBundled)
+            {
+                var path = Path.Combine(SetDir(set.Key), set.ClsName!);
+                if (File.Exists(path)) return path;
+            }
             return BundledClsPath;
         }
         private string ResolveRec()
@@ -202,6 +219,8 @@ namespace ShowWrite
             var tasks = new List<(string Url, string Dest, string Label)>();
             if (!set.DetBundled)
                 tasks.Add((set.DetUrl!, Path.Combine(SetDir(key), set.DetName!), "检测模型"));
+            if (!set.ClsBundled)
+                tasks.Add((set.ClsUrl!, Path.Combine(SetDir(key), set.ClsName!), "方向分类"));
             tasks.Add((set.RecUrl, Path.Combine(SetDir(key), set.RecName), "识别模型"));
             tasks.Add((set.DictUrl, Path.Combine(SetDir(key), set.DictName), "中文字典"));
 
@@ -240,7 +259,9 @@ namespace ShowWrite
             }
             if (IsModelReady) return true;
             var key = string.IsNullOrEmpty(cfg.ModelSet) ? "v4-mobile" : cfg.ModelSet;
-            if (!File.Exists(BundledClsPath))
+            var set = FindSet(key);
+            // 模型集没配 cls 下载 URL 时，必须有 NuGet 自带的 cls（发布时可能缺失）
+            if (set != null && set.ClsBundled && !File.Exists(BundledClsPath))
             {
                 progress?.Report((100, $"缺少自带分类模型: {BundledDir}"));
                 return false;
