@@ -418,8 +418,10 @@
                     </Grid.RowDefinitions>
 
                     <Grid Grid.Row="0">
-                        <ScrollViewer Padding="8">
-                            <ItemsControl x:Name="PhotoList" ItemsSource="{Binding Photos}" x:CompileBindings="False">
+                        <!-- Avalonia 12.1 的 ScrollViewer 测量内容时忽略 Padding，导致条目右侧被视口裁切；
+                             改用 ItemsControl 的 Margin 留白，并关闭滚动条覆盖模式避免遮挡圆角 -->
+                        <ScrollViewer AllowAutoHide="False">
+                            <ItemsControl x:Name="PhotoList" ItemsSource="{Binding Photos}" x:CompileBindings="False" Margin="8">
                                 <ItemsControl.ItemTemplate>
                                 <DataTemplate x:DataType="local:PhotoItem">
                                     <Border x:Name="PhotoItemBorder"
@@ -601,8 +603,8 @@
                         <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
 
-                    <ScrollViewer Grid.Row="0" Padding="8" HorizontalScrollBarVisibility="Disabled">
-                        <ItemsControl x:Name="TitleList" ItemsSource="{Binding Titles}" x:CompileBindings="False">
+                    <ScrollViewer Grid.Row="0" AllowAutoHide="False" HorizontalScrollBarVisibility="Disabled">
+                        <ItemsControl x:Name="TitleList" ItemsSource="{Binding Titles}" x:CompileBindings="False" Margin="8">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate x:DataType="local:TitleEntry">
                                     <Button Classes="title-btn"
@@ -744,8 +746,8 @@
                 </Border>
                 
                 <Grid Grid.Row="1">
-                    <ScrollViewer Padding="8">
-                        <ItemsControl x:Name="PageList" ItemsSource="{Binding WhiteboardPageThumbnails}" x:CompileBindings="False">
+                    <ScrollViewer AllowAutoHide="False">
+                        <ItemsControl x:Name="PageList" ItemsSource="{Binding WhiteboardPageThumbnails}" x:CompileBindings="False" Margin="8">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate x:DataType="local:WhiteboardPageThumbnail">
                                     <Border x:Name="PageItemBorder"
