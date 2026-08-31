@@ -66,7 +66,7 @@ namespace ShowWrite
 
         public int PenSize { get; set; } = 4;
         public SKColor PenColor { get; set; } = SKColors.Red;
-        public int EraserSize { get; set; } = 20;
+        public int EraserSize { get; set; } = 45;
         public PenSettings PenSettings { get; set; } = new PenSettings();
 
         public double PalmEraserThreshold
@@ -627,8 +627,8 @@ namespace ShowWrite
         {
             if (_tempStrokes == null) return;
 
-            var newStrokes = new List<InkStroke>();
-            float step = 1.0f;
+            // 沿拖动路径按橡皮尺寸的一半步进采样，保证覆盖路径的同时避免过密的重复擦除
+            float step = Math.Max(1f, Math.Min(eraserRectVideo.Width, eraserRectVideo.Height) * 0.5f);
 
             float dx = to.X - from.X;
             float dy = to.Y - from.Y;
@@ -665,48 +665,134 @@ namespace ShowWrite
             var currentWidths = new List<float>();
             var hasWidths = stroke.PointWidths != null && stroke.PointWidths.Count == videoPoints.Count;
 
-            for (int i = 0; i < videoPoints.Count; i++)
+            float GetWidth(int i) => hasWidths ? stroke.PointWidths![i] : stroke.Size;
+
+            // 按线段几何擦除：对每条相邻点组成的线段与橡皮矩形求交，在交点处精确切断。
+            // 切口优先用未膨胀的橡皮框与笔画中心线求交，保证实际擦除范围严格等于橡皮框
+            // 大小（屏幕固定，不随画布缩放变化）；仅当橡皮框未碰到中心线（只擦到笔画边缘）
+            // 时，才用按笔画半径膨胀的矩形兜底，避免粗笔画擦不掉。
+            for (int i = 0; i < videoPoints.Count - 1; i++)
             {
-                var point = videoPoints[i];
-                var width = hasWidths ? stroke.PointWidths![i] : stroke.Size;
-                float radius = width / 2;
+                var a = videoPoints[i];
+                var b = videoPoints[i + 1];
+                float widthA = GetWidth(i);
+                float widthB = GetWidth(i + 1);
 
-                // 判断圆是否与矩形相交
-                bool intersects = CircleIntersectsRect(point, radius, rectVideo);
+                bool hit = ClipSegmentToRect(a, b, rectVideo, 0f, out float t0, out float t1)
+                           || ClipSegmentToRect(a, b, rectVideo, (widthA + widthB) / 4, out t0, out t1);
 
-                if (!intersects)
+                if (!hit)
                 {
-                    currentSegment.Add(point);
-                    currentWidths.Add(width);
+                    // 整段保留
+                    if (currentSegment.Count == 0)
+                    {
+                        currentSegment.Add(a);
+                        currentWidths.Add(widthA);
+                    }
+                    currentSegment.Add(b);
+                    currentWidths.Add(widthB);
                 }
                 else
                 {
-                    // 擦除该点，结束当前段
-                    if (currentSegment.Count >= 2)
+                    if (t0 > 0)
                     {
-                        result.Add(CreateStrokeSegment(currentSegment, currentWidths, stroke));
+                        // 保留擦除入口之前的部分（在入口处切断）
+                        if (currentSegment.Count == 0)
+                        {
+                            currentSegment.Add(a);
+                            currentWidths.Add(widthA);
+                        }
+                        currentSegment.Add(LerpPoint(a, b, t0));
+                        currentWidths.Add(Lerp(widthA, widthB, t0));
+                        FlushSegment(result, currentSegment, currentWidths, stroke);
                     }
-                    currentSegment.Clear();
-                    currentWidths.Clear();
+                    else
+                    {
+                        FlushSegment(result, currentSegment, currentWidths, stroke);
+                    }
+
+                    if (t1 < 1)
+                    {
+                        // 从擦除出口处重新开始一段
+                        currentSegment.Add(LerpPoint(a, b, t1));
+                        currentWidths.Add(Lerp(widthA, widthB, t1));
+                        currentSegment.Add(b);
+                        currentWidths.Add(widthB);
+                    }
                 }
             }
 
-            // 添加最后一段
-            if (currentSegment.Count >= 2)
-            {
-                result.Add(CreateStrokeSegment(currentSegment, currentWidths, stroke));
-            }
+            FlushSegment(result, currentSegment, currentWidths, stroke);
 
             return result;
         }
 
-        private bool CircleIntersectsRect(SKPoint center, float radius, SKRect rect)
+        private void FlushSegment(List<InkStroke> result, List<SKPoint> points, List<float> widths, InkStroke source)
         {
-            float closestX = Math.Max(rect.Left, Math.Min(center.X, rect.Right));
-            float closestY = Math.Max(rect.Top, Math.Min(center.Y, rect.Bottom));
-            float dx = center.X - closestX;
-            float dy = center.Y - closestY;
-            return (dx * dx + dy * dy) < radius * radius;
+            if (points.Count >= 2)
+            {
+                result.Add(CreateStrokeSegment(points, widths, source));
+            }
+            points.Clear();
+            widths.Clear();
+        }
+
+        private static SKPoint LerpPoint(SKPoint a, SKPoint b, float t)
+        {
+            return new SKPoint(a.X + (b.X - a.X) * t, a.Y + (b.Y - a.Y) * t);
+        }
+
+        private static float Lerp(float a, float b, float t)
+        {
+            return a + (b - a) * t;
+        }
+
+        /// <summary>
+        /// 计算线段 a->b（按笔画半径膨胀后）与矩形的相交参数区间 [t0, t1]。
+        /// 未相交时返回 false。
+        /// </summary>
+        private static bool ClipSegmentToRect(SKPoint a, SKPoint b, SKRect rect, float radius, out float t0, out float t1)
+        {
+            t0 = 0f;
+            t1 = 1f;
+
+            // 将矩形按笔画半径膨胀，使线段中心线的相交近似等价于笔画实体与橡皮相交
+            var grown = new SKRect(rect.Left - radius, rect.Top - radius, rect.Right + radius, rect.Bottom + radius);
+
+            float dx = b.X - a.X;
+            float dy = b.Y - a.Y;
+
+            if (Math.Abs(dx) < 1e-6f)
+            {
+                if (a.X < grown.Left || a.X > grown.Right) return false;
+            }
+            else
+            {
+                float inv = 1f / dx;
+                float ta = (grown.Left - a.X) * inv;
+                float tb = (grown.Right - a.X) * inv;
+                if (ta > tb) (ta, tb) = (tb, ta);
+                t0 = Math.Max(t0, ta);
+                t1 = Math.Min(t1, tb);
+                if (t0 > t1) return false;
+            }
+
+            if (Math.Abs(dy) < 1e-6f)
+            {
+                if (a.Y < grown.Top || a.Y > grown.Bottom) return false;
+            }
+            else
+            {
+                float inv = 1f / dy;
+                float ta = (grown.Top - a.Y) * inv;
+                float tb = (grown.Bottom - a.Y) * inv;
+                if (ta > tb) (ta, tb) = (tb, ta);
+                t0 = Math.Max(t0, ta);
+                t1 = Math.Min(t1, tb);
+                if (t0 > t1) return false;
+            }
+
+            return true;
         }
 
         private InkStroke CreateStrokeSegment(List<SKPoint> points, List<float> widths, InkStroke source)
