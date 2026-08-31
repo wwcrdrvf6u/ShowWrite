@@ -221,6 +221,9 @@ namespace ShowWrite
 
             InitializeKeystonePoints();
 
+            // 应用常规设置（板中板按钮、照片栏底部选择条）
+            ApplyGeneralSettings();
+
             var includeInkCheckBox = this.FindControl<CheckBox>("IncludeInkCheckBox");
             if (includeInkCheckBox != null)
             {
@@ -1380,6 +1383,9 @@ namespace ShowWrite
 
         private void OnFrameReady()
         {
+            // 摄像头保活：照片查看模式下不把摄像头帧挂到画面，避免覆盖正在显示的照片
+            if (_isPhotoAnnotationMode) return;
+
             PresentCameraFrame(centerOnSizeChange: false);
 
             foreach (var pluginWindow in _pluginWindows)
@@ -1983,6 +1989,7 @@ namespace ShowWrite
 
             // 确保VideoImage不可见
             VideoImage.Source = null;
+            _attachedVideoBitmap = null;
             VideoAreaContainer.Children.Clear();
         }
 
@@ -2223,6 +2230,46 @@ namespace ShowWrite
             }
         }
 
+        /// <summary>
+        /// 应用常规设置：板中板按钮可见性、照片栏底部选择条（OCR 识别目录禁用时隐藏，默认照片选项卡）。
+        /// </summary>
+        private void ApplyGeneralSettings()
+        {
+            var config = Config.Load();
+
+            // 板中板按钮（默认不显示）
+            var pipBtn = this.FindControl<Button>("PictureInPictureBtn");
+            if (pipBtn != null && _whiteboardManager is not { IsWhiteboardMode: true })
+            {
+                pipBtn.IsVisible = config.ShowPictureInPicture;
+            }
+
+            // OCR 识别目录：禁用时隐藏照片栏底部选择条，默认就是照片选项卡
+            var tabBar = this.FindControl<Border>("PhotoTabBar");
+            bool ocrEnabled = config.Ocr?.EnableOcrDirectory ?? true;
+            if (tabBar != null) tabBar.IsVisible = ocrEnabled;
+            if (!ocrEnabled)
+            {
+                var photoContent = this.FindControl<Grid>("PhotoContentPanel");
+                var titleContent = this.FindControl<Grid>("TitleContentPanel");
+                var fileTab = this.FindControl<Button>("FileTabBtn");
+                var titleTab = this.FindControl<Button>("TitleTabBtn");
+                if (photoContent != null) photoContent.IsVisible = true;
+                if (titleContent != null) titleContent.IsVisible = false;
+                if (fileTab != null) fileTab.Classes.Add("active");
+                if (titleTab != null) titleTab.Classes.Remove("active");
+            }
+
+            // 照片栏滚动条可见性
+            var photoScroll = this.FindControl<ScrollViewer>("PhotoListScrollViewer");
+            if (photoScroll != null)
+            {
+                photoScroll.VerticalScrollBarVisibility = config.ShowPhotoPanelScrollbar
+                    ? ScrollBarVisibility.Auto
+                    : ScrollBarVisibility.Hidden;
+            }
+        }
+
         private void FileTab_Click(object? sender, RoutedEventArgs e)
         {
             var photoContent = this.FindControl<Grid>("PhotoContentPanel");
@@ -2259,7 +2306,7 @@ namespace ShowWrite
         {
             if (e.Action != NotifyCollectionChangedAction.Add) return;
             var config = Config.Load();
-            if (!config.Ocr.EnableAutoOcr) return;
+            if (!config.Ocr.EnableOcrDirectory) return;
 
             if (e.NewItems != null)
             {
@@ -2829,8 +2876,12 @@ namespace ShowWrite
 
             _isPhotoAnnotationMode = true;
 
-            _cameraService?.CancelConnecting();
-            _cameraService?.StopCapture();
+            // 摄像头保活：开启时显示照片不断开摄像头，返回时立即恢复画面
+            if (!Config.Load().CameraKeepAlive)
+            {
+                _cameraService?.CancelConnecting();
+                _cameraService?.StopCapture();
+            }
             CloseLoadingWindow();
 
             var bitmap = await LoadBitmapAsync(photo.FilePath);
@@ -2942,13 +2993,24 @@ namespace ShowWrite
             }
 
             // 隐藏当前显示的照片
+            // 同时清空 _attachedVideoBitmap：重启摄像头后若分辨率不变，FrameBitmap
+            // 会是同一个复用实例，不清空会导致 PresentCameraFrame 跳过重新挂载，
+            // 出现"摄像头已连接但无画面"。
             VideoImage.Source = null;
+            _attachedVideoBitmap = null;
             VideoImage.IsVisible = false;
 
             InkCanvasOverlay.ExitPhotoMode();
             InkCanvasOverlay.ClearStrokes();
 
-            if (!_cameraService.IsConnected)
+            if (_cameraService.IsConnected)
+            {
+                // 摄像头保活：摄像头仍在连接，直接恢复实时画面（不重连）
+                VideoImage.IsVisible = true;
+                _attachedVideoBitmap = null; // Source 已被照片替换，强制重新挂载摄像头帧
+                PresentCameraFrame(centerOnSizeChange: true);
+            }
+            else
             {
                 var loadingContainer = this.FindControl<StackPanel>("LoadingContainer");
                 if (loadingContainer != null)
@@ -2961,9 +3023,9 @@ namespace ShowWrite
                     loadingPanel.IsVisible = true;
                 }
                 StartLoadingAnimation();
+                // 重新检测并连接摄像头，连接成功后会在 PresentCameraFrame 中重新显示画面
+                _cameraService?.DetectAndConnectCamera();
             }
-            // 重新检测并连接摄像头，连接成功后会在 PresentCameraFrame 中重新显示画面
-            _cameraService?.DetectAndConnectCamera();
 
             // 更新光标覆盖层布局
             UpdateCursorCanvasLayout();
@@ -3019,15 +3081,26 @@ namespace ShowWrite
         {
             try
             {
-                using var stream = File.OpenRead(imagePath);
-                var decodeTask = Task.Run(() => SkiaSharp.SKBitmap.Decode(stream));
-                decodeTask.Wait();
+                // 按 SKCodec 支持的缩放档位降采样解码，避免大照片整图解码时
+                // 一次性分配整幅像素导致 "Unable to allocate pixels for the bitmap"
+                using var codec = SkiaSharp.SKCodec.Create(imagePath);
+                if (codec == null) return null;
 
-                using var originalBitmap = decodeTask.Result;
-                if (originalBitmap == null) return null;
+                var info = codec.Info;
+                if (info.Width <= 0 || info.Height <= 0) return null;
 
-                int thumbWidth = 260;
+                const int thumbWidth = 260;
+                var scale = Math.Min(1f, (float)thumbWidth / info.Width);
+                var dims = codec.GetScaledDimensions(scale);
+                if (dims.Width <= 0 || dims.Height <= 0) return null;
+
+                var target = new SkiaSharp.SKImageInfo(dims.Width, dims.Height);
+                using var originalBitmap = new SkiaSharp.SKBitmap(target);
+                if (codec.GetPixels(target, originalBitmap.GetPixels()) != SkiaSharp.SKCodecResult.Success)
+                    return null;
+
                 int thumbHeight = (int)(originalBitmap.Height * ((double)thumbWidth / originalBitmap.Width));
+                if (thumbHeight <= 0) thumbHeight = 1;
 
                 using var resizedBitmap = originalBitmap.Resize(new SkiaSharp.SKImageInfo(thumbWidth, thumbHeight), SkiaSharp.SKSamplingOptions.Default);
                 if (resizedBitmap == null) return null;
@@ -3073,11 +3146,12 @@ namespace ShowWrite
             win.ShowDialog(this);
         }
 
-        private void OpenSettings_Click(object? sender, RoutedEventArgs e)
+        private async void OpenSettings_Click(object? sender, RoutedEventArgs e)
         {
             MoreMenuPopup.IsOpen = false;
-            var settingsWindow = new SettingsWindow();
-            settingsWindow.ShowDialog(this);
+            var settingsWindow = new SettingsWindow(_cameraService);
+            await settingsWindow.ShowDialog(this);
+            ApplyGeneralSettings();
         }
 
         private void Exit_Click(object? sender, RoutedEventArgs e)

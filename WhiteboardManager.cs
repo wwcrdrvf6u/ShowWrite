@@ -265,7 +265,8 @@ namespace ShowWrite
             if (captureBtn != null) captureBtn.IsVisible = true;
             if (scanBtn != null) scanBtn.IsVisible = true;
             if (connectDeviceBtn != null) connectDeviceBtn.IsVisible = true;
-            if (pipBtn != null) pipBtn.IsVisible = true;
+            // 板中板按钮按设置恢复（默认不显示）
+            if (pipBtn != null) pipBtn.IsVisible = Config.Load().ShowPictureInPicture;
             if (normalRightButtons != null) normalRightButtons.IsVisible = true;
 
             if (_whiteboardPageButtons != null)

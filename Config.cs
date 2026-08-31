@@ -46,7 +46,8 @@ namespace ShowWrite
 
     public class OcrSettings
     {
-        public bool EnableAutoOcr { get; set; } = true;
+        // 启用 OCR 识别目录（禁用后照片栏只显示照片选项卡，隐藏底部选择条）
+        public bool EnableOcrDirectory { get; set; } = true;
         // 当前选用的模型集 Key（v4-mobile / v4-server / custom）
         public string ModelSet { get; set; } = "v4-mobile";
         // 是否启用版面分析（PicoDet 中文版面模型，识别标题/正文/表格区域；关闭则用字号聚类猜标题）
@@ -70,6 +71,14 @@ namespace ShowWrite
         public PenSettings PenSettings { get; set; } = new PenSettings();
         public List<string> EnabledPlugins { get; set; } = new();
         public string Theme { get; set; } = "Dark";
+        // 是否显示板中板按钮（默认不显示）
+        public bool ShowPictureInPicture { get; set; } = false;
+        // 摄像头保活：显示照片时不断开摄像头，返回时立即恢复画面
+        public bool CameraKeepAlive { get; set; } = false;
+        // 是否显示照片栏滚动条
+        public bool ShowPhotoPanelScrollbar { get; set; } = true;
+        // 启动图版本 API（默认当前使用的地址）
+        public string BootImageApiUrl { get; set; } = "https://sxvillage.dpdns.org/bootp/api/app";
         public RandomNoteConfig RandomNote { get; set; } = new RandomNoteConfig();
         public OcrSettings Ocr { get; set; } = new OcrSettings();
 

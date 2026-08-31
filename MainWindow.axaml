@@ -420,7 +420,7 @@
                     <Grid Grid.Row="0">
                         <!-- Avalonia 12.1 的 ScrollViewer 测量内容时忽略 Padding，导致条目右侧被视口裁切；
                              改用 ItemsControl 的 Margin 留白，并关闭滚动条覆盖模式避免遮挡圆角 -->
-                        <ScrollViewer AllowAutoHide="False">
+                        <ScrollViewer x:Name="PhotoListScrollViewer" AllowAutoHide="False">
                             <ItemsControl x:Name="PhotoList" ItemsSource="{Binding Photos}" x:CompileBindings="False" Margin="8">
                                 <ItemsControl.ItemTemplate>
                                 <DataTemplate x:DataType="local:PhotoItem">
@@ -681,7 +681,8 @@
                 </Grid>
 
                 <!-- Row 1: 底部选择栏（左右排版的选项卡） -->
-                <Border Grid.Row="1"
+                <Border x:Name="PhotoTabBar"
+                        Grid.Row="1"
                         Background="Transparent"
                         BorderBrush="Transparent"
                         BorderThickness="0"
@@ -1005,6 +1006,7 @@
                                     Classes="tool-btn-square"
                                     Width="56"
                                     Height="56"
+                                    IsVisible="False"
                                     Click="PictureInPicture_Click">
                                 <Grid HorizontalAlignment="Center" VerticalAlignment="Center">
                                     <Grid.RowDefinitions>

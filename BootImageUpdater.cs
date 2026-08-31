@@ -15,7 +15,14 @@ namespace ShowWrite
     /// </summary>
     public static class BootImageUpdater
     {
-        private const string ApiUrl = "https://sxvillage.dpdns.org/bootp/api/app";
+        private const string DefaultApiUrl = "https://sxvillage.dpdns.org/bootp/api/app";
+
+        /// <summary>获取实际使用的 API 地址（配置为空时回退默认地址）。</summary>
+        public static string GetApiUrl(string? apiUrl = null)
+        {
+            var url = apiUrl ?? Config.Load().BootImageApiUrl;
+            return string.IsNullOrWhiteSpace(url) ? DefaultApiUrl : url;
+        }
         // GitHub 下载可能较慢，给足超时
         private static readonly HttpClient HttpClient = new(new HttpClientHandler
         {
@@ -26,33 +33,38 @@ namespace ShowWrite
 
         private static readonly string LogFile = Path.Combine(Path.GetTempPath(), "showwrite_bootp.log");
 
-        public static async Task CheckAndUpdateAsync()
+        /// <summary>
+        /// 检查并更新启动图。force=true 时跳过版本比对强制下载。
+        /// 返回是否成功完成更新（版本一致跳过也返回 true）。
+        /// </summary>
+        public static async Task<bool> CheckAndUpdateAsync(string? apiUrl = null, bool force = false)
         {
             Log("=== 启动图更新检查开始 ===");
             try
             {
-                Log($"请求 API: {ApiUrl}");
-                var server = await FetchServerInfoAsync();
+                var url = GetApiUrl(apiUrl);
+                Log($"请求 API: {url}");
+                var server = await FetchServerInfoAsync(url);
                 if (server == null)
                 {
                     Log("API 返回 null，退出");
-                    return;
+                    return false;
                 }
                 Log($"服务端 version={server.Version}, image_url={server.ImageUrl}");
 
                 if (string.IsNullOrEmpty(server.Version) || string.IsNullOrEmpty(server.ImageUrl))
                 {
                     Log("version 或 image_url 为空，退出");
-                    return;
+                    return false;
                 }
 
                 var localVersion = GetLocalVersion();
                 Log($"本地版本: {(localVersion ?? "(无 v.json)")}");
 
-                if (!string.IsNullOrEmpty(localVersion) && localVersion == server.Version)
+                if (!force && !string.IsNullOrEmpty(localVersion) && localVersion == server.Version)
                 {
                     Log("版本一致，跳过下载");
-                    return;
+                    return true;
                 }
 
                 Log("版本不一致或本地无版本文件，开始下载");
@@ -87,6 +99,7 @@ namespace ShowWrite
 
                 try { File.Delete(tempZip); Log("清理临时压缩包"); } catch (Exception ex) { Log($"清理临时压缩包失败: {ex.Message}"); }
                 Log("=== 启动图更新完成 ===");
+                return true;
             }
             catch (Exception ex)
             {
@@ -94,14 +107,16 @@ namespace ShowWrite
                 if (ex.InnerException != null)
                     Log($"  Inner: {ex.InnerException.GetType().Name}: {ex.InnerException.Message}");
                 Log(ex.StackTrace ?? "(无堆栈)");
+                return false;
             }
         }
 
-        private static async Task<BootInfo?> FetchServerInfoAsync()
+        /// <summary>请求 API 获取远端启动图信息。</summary>
+        public static async Task<BootInfo?> FetchServerInfoAsync(string? apiUrl = null)
         {
             try
             {
-                using var resp = await HttpClient.GetAsync(ApiUrl);
+                using var resp = await HttpClient.GetAsync(GetApiUrl(apiUrl));
                 Log($"API HTTP {(int)resp.StatusCode} {resp.StatusCode}");
                 resp.EnsureSuccessStatusCode();
                 var json = await resp.Content.ReadAsStringAsync();
@@ -115,7 +130,8 @@ namespace ShowWrite
             }
         }
 
-        private static string? GetLocalVersion()
+        /// <summary>读取本地 v.json 中的启动图版本。</summary>
+        public static string? GetLocalVersion()
         {
             var vFile = Path.Combine(Config.GetBootPath(), "v.json");
             if (!File.Exists(vFile))

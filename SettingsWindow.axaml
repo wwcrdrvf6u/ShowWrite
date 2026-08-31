@@ -129,7 +129,16 @@
                                 <TextBlock Text="常规" FontSize="14" Foreground="{DynamicResource ThemeTextSecondary}" VerticalAlignment="Center"/>
                             </StackPanel>
                         </ListBoxItem>
-                        
+
+                        <ListBoxItem Classes="nav-item" Tag="appearance">
+                            <StackPanel Orientation="Horizontal" Spacing="12">
+                                <Viewbox Width="20" Height="20">
+                                    <Path Fill="{DynamicResource ThemeTextPrimary}" Data="M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9c.83 0 1.5-.67 1.5-1.5 0-.39-.15-.74-.39-1.01-.23-.26-.38-.61-.38-.99 0-.83.67-1.5 1.5-1.5H16c2.76 0 5-2.24 5-5 0-4.42-4.03-8-9-8zm-5.5 9c-.83 0-1.5-.67-1.5-1.5S5.67 9 6.5 9 8 9.67 8 10.5 7.33 12 6.5 12zm3-4C8.67 8 8 7.33 8 6.5S8.67 5 9.5 5s1.5.67 1.5 1.5S10.33 8 9.5 8zm5 0c-.83 0-1.5-.67-1.5-1.5S13.67 5 14.5 5s1.5.67 1.5 1.5S15.33 8 14.5 8zm3 4c-.83 0-1.5-.67-1.5-1.5S16.67 9 17.5 9s1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/>
+                                </Viewbox>
+                                <TextBlock Text="外观" FontSize="14" Foreground="{DynamicResource ThemeTextSecondary}" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </ListBoxItem>
+
                         <ListBoxItem Classes="nav-item" Tag="pen">
                             <StackPanel Orientation="Horizontal" Spacing="12">
                                 <Viewbox Width="20" Height="20">
@@ -139,15 +148,6 @@
                             </StackPanel>
                         </ListBoxItem>
                         
-                        <ListBoxItem Classes="nav-item" Tag="camera">
-                            <StackPanel Orientation="Horizontal" Spacing="12">
-                                <Viewbox Width="20" Height="20">
-                                    <Path Fill="{DynamicResource ThemeTextPrimary}" Data="M19 6.5h-1.28l-.32-1a3 3 0 0 0-2.84-2H9.44A3 3 0 0 0 6.6 5.55l-.32 1H5a3 3 0 0 0-3 3v8a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3v-8a3 3 0 0 0-3-3.05m1 11a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-8a1 1 0 0 1 1-1h2a1 1 0 0 0 1-.68l.54-1.64a1 1 0 0 1 .95-.68h5.12a1 1 0 0 1 .95.68l.54 1.64a1 1 0 0 0 .9.68h2a1 1 0 0 1 1 1Zm-8-9a4 4 0 1 0 4 4a4 4 0 0 0-4-4m0 6a2 2 0 1 1 2-2a2 2 0 0 1-2 2"/>
-                                </Viewbox>
-                                <TextBlock Text="摄像头" FontSize="14" Foreground="{DynamicResource ThemeTextSecondary}" VerticalAlignment="Center"/>
-                            </StackPanel>
-                        </ListBoxItem>
-
                         <ListBoxItem Classes="nav-item" Tag="ocr">
                             <StackPanel Orientation="Horizontal" Spacing="12">
                                 <Viewbox Width="20" Height="20">
@@ -177,7 +177,39 @@
                         <StackPanel>
                             <StackPanel x:Name="GeneralPage" IsVisible="True" Spacing="16">
                                 <TextBlock Text="常规设置" Classes="setting-title"/>
-                                
+
+                                <Border Background="{DynamicResource ThemeSurface}" CornerRadius="8" Padding="16">
+                                    <StackPanel Spacing="16">
+                                        <Grid ColumnDefinitions="Auto,*">
+                                            <TextBlock Grid.Column="0" Text="默认摄像头" Classes="setting-label" Width="140"/>
+                                            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                                                <ComboBox x:Name="DefaultCameraComboBox" Width="220"/>
+                                                <Button Classes="reset-btn" Click="RefreshCameraList_Click" Padding="12,4">
+                                                    <TextBlock Text="刷新" FontSize="12" Foreground="{DynamicResource ThemeTextPrimary}" VerticalAlignment="Center"/>
+                                                </Button>
+                                            </StackPanel>
+                                        </Grid>
+
+                                        <Grid ColumnDefinitions="Auto,*">
+                                            <TextBlock Grid.Column="0" Text="显示板中板按钮" Classes="setting-label" Width="140"/>
+                                            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                                                <CheckBox x:Name="ShowPipButtonInput" IsChecked="False"/>
+                                            </StackPanel>
+                                        </Grid>
+
+                                        <Grid ColumnDefinitions="Auto,*">
+                                            <TextBlock Grid.Column="0" Text="摄像头保活" Classes="setting-label" Width="140"/>
+                                            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                                                <CheckBox x:Name="CameraKeepAliveInput" IsChecked="False"/>
+                                            </StackPanel>
+                                        </Grid>
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
+
+                            <StackPanel x:Name="AppearancePage" IsVisible="False" Spacing="16">
+                                <TextBlock Text="外观设置" Classes="setting-title"/>
+
                                 <Border Background="{DynamicResource ThemeSurface}" CornerRadius="8" Padding="16">
                                     <StackPanel Spacing="16">
                                         <Grid ColumnDefinitions="Auto,*">
@@ -191,10 +223,41 @@
                                                 </ComboBox>
                                             </StackPanel>
                                         </Grid>
+
+                                        <Grid ColumnDefinitions="Auto,*">
+                                            <TextBlock Grid.Column="0" Text="显示照片栏滚动条" Classes="setting-label" Width="140"/>
+                                            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                                                <CheckBox x:Name="ShowPhotoScrollbarInput" IsChecked="True"/>
+                                            </StackPanel>
+                                        </Grid>
+                                    </StackPanel>
+                                </Border>
+
+                                <TextBlock Text="启动图" Classes="setting-title" Margin="0,16,0,0"/>
+
+                                <Border Background="{DynamicResource ThemeSurface}" CornerRadius="8" Padding="16">
+                                    <StackPanel Spacing="12">
+                                        <Grid ColumnDefinitions="Auto,*">
+                                            <TextBlock Grid.Column="0" Text="启动图版本API" Classes="setting-label" Width="140"/>
+                                            <TextBox x:Name="BootImageApiInput" Grid.Column="1" PlaceholderText="https://..."/>
+                                        </Grid>
+                                        <Grid ColumnDefinitions="Auto,*">
+                                            <TextBlock Grid.Column="0" Text="当前启动图版本" Classes="setting-label" Width="140"/>
+                                            <TextBlock x:Name="BootLocalVersionText" Grid.Column="1" Text="(未安装)" Foreground="{DynamicResource ThemeTextSecondary}" FontSize="13" VerticalAlignment="Center"/>
+                                        </Grid>
+                                        <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,4,0,0">
+                                            <Button x:Name="RefreshBootVersionBtn" Classes="reset-btn" Click="RefreshBootVersion_Click" Padding="12,4">
+                                                <TextBlock Text="刷新版本" FontSize="12" Foreground="{DynamicResource ThemeTextPrimary}" VerticalAlignment="Center"/>
+                                            </Button>
+                                            <Button x:Name="UpdateBootImageBtn" Classes="reset-btn" Click="UpdateBootImage_Click" Padding="12,4">
+                                                <TextBlock Text="更新启动图" FontSize="12" Foreground="{DynamicResource ThemeTextPrimary}" VerticalAlignment="Center"/>
+                                            </Button>
+                                            <TextBlock x:Name="BootStatusText" Text="" FontSize="11" Foreground="{DynamicResource ThemeTextTertiary}" VerticalAlignment="Center"/>
+                                        </StackPanel>
                                     </StackPanel>
                                 </Border>
                             </StackPanel>
-                            
+
                             <StackPanel x:Name="PenPage" IsVisible="False" Spacing="16">
                                 <TextBlock Text="笔锋设置" Classes="setting-title"/>
                                 
@@ -277,11 +340,6 @@
                                 </Border>
                             </StackPanel>
                             
-                            <StackPanel x:Name="CameraPage" IsVisible="False" Spacing="16">
-                                <TextBlock Text="摄像头设置" Classes="setting-title"/>
-                                <TextBlock Text="摄像头设置内容待添加..." Foreground="{DynamicResource ThemeTextTertiary}"/>
-                            </StackPanel>
-
                             <StackPanel x:Name="OcrPage" IsVisible="False" Spacing="16">
                                 <TextBlock Text="OCR 模型管理" Classes="setting-title"/>
 
@@ -292,10 +350,10 @@
                                             <TextBlock Grid.Column="1" Text="PaddleOCR PP-OCRv5 中文 (RapidOcrNet)" Foreground="{DynamicResource ThemeTextSecondary}" FontSize="13" VerticalAlignment="Center"/>
                                         </Grid>
                                         <Grid ColumnDefinitions="Auto,*">
-                                            <TextBlock Grid.Column="0" Text="新增照片自动识别" Classes="setting-label" Width="140"/>
+                                            <TextBlock Grid.Column="0" Text="启用OCR识别目录" Classes="setting-label" Width="140"/>
                                             <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
-                                                <CheckBox x:Name="EnableAutoOcrInput" IsChecked="True"/>
-                                                <TextBlock Text="(拍照/导入后自动 OCR)" Foreground="{DynamicResource ThemeTextTertiary}" VerticalAlignment="Center" FontSize="11"/>
+                                                <CheckBox x:Name="EnableOcrDirectoryInput" IsChecked="True"/>
+                                                <TextBlock Text="(禁用后照片栏只显示照片选项卡)" Foreground="{DynamicResource ThemeTextTertiary}" VerticalAlignment="Center" FontSize="11"/>
                                             </StackPanel>
                                         </Grid>
                                         <Grid ColumnDefinitions="Auto,*">

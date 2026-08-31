@@ -4,6 +4,7 @@ using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
 using Avalonia.Styling;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Management;
 using System.Threading;
@@ -13,8 +14,8 @@ namespace ShowWrite
     public partial class SettingsWindow : Window
     {
         private StackPanel? _generalPage;
+        private StackPanel? _appearancePage;
         private StackPanel? _penPage;
-        private StackPanel? _cameraPage;
         private StackPanel? _ocrPage;
         private StackPanel? _aboutPage;
 
@@ -29,9 +30,19 @@ namespace ShowWrite
         private TextBlock? _motherboardSerialText;
         private TextBlock? _uuidText;
         private ComboBox? _themeComboBox;
+        private ComboBox? _defaultCameraComboBox;
+        private CheckBox? _showPipButtonInput;
+        private CheckBox? _cameraKeepAliveInput;
+        private CheckBox? _showPhotoScrollbarInput;
+        private TextBox? _bootImageApiInput;
+        private TextBlock? _bootLocalVersionText;
+        private TextBlock? _bootStatusText;
         private SplitView? _settingsSplitView;
+        private List<int> _availableCameras = new();
 
-        private CheckBox? _enableAutoOcrInput;
+        private readonly CameraService? _cameraService;
+
+        private CheckBox? _enableOcrDirectoryInput;
         private StackPanel? _ocrModelListPanel;
         private Button? _ocrRedownloadBtn;
         private ProgressBar? _ocrDownloadProgress;
@@ -61,8 +72,8 @@ namespace ShowWrite
                 : ThemeVariant.Light;
 
             _generalPage = this.FindControl<StackPanel>("GeneralPage");
+            _appearancePage = this.FindControl<StackPanel>("AppearancePage");
             _penPage = this.FindControl<StackPanel>("PenPage");
-            _cameraPage = this.FindControl<StackPanel>("CameraPage");
             _ocrPage = this.FindControl<StackPanel>("OcrPage");
             _aboutPage = this.FindControl<StackPanel>("AboutPage");
 
@@ -77,9 +88,16 @@ namespace ShowWrite
             _motherboardSerialText = this.FindControl<TextBlock>("MotherboardSerialText");
             _uuidText = this.FindControl<TextBlock>("UuidText");
             _themeComboBox = this.FindControl<ComboBox>("ThemeComboBox");
+            _defaultCameraComboBox = this.FindControl<ComboBox>("DefaultCameraComboBox");
+            _showPipButtonInput = this.FindControl<CheckBox>("ShowPipButtonInput");
+            _cameraKeepAliveInput = this.FindControl<CheckBox>("CameraKeepAliveInput");
+            _showPhotoScrollbarInput = this.FindControl<CheckBox>("ShowPhotoScrollbarInput");
+            _bootImageApiInput = this.FindControl<TextBox>("BootImageApiInput");
+            _bootLocalVersionText = this.FindControl<TextBlock>("BootLocalVersionText");
+            _bootStatusText = this.FindControl<TextBlock>("BootStatusText");
             _settingsSplitView = this.FindControl<SplitView>("SettingsSplitView");
 
-            _enableAutoOcrInput = this.FindControl<CheckBox>("EnableAutoOcrInput");
+            _enableOcrDirectoryInput = this.FindControl<CheckBox>("EnableOcrDirectoryInput");
             _ocrModelListPanel = this.FindControl<StackPanel>("OcrModelListPanel");
             _ocrRedownloadBtn = this.FindControl<Button>("OcrRedownloadBtn");
             _ocrDownloadProgress = this.FindControl<ProgressBar>("OcrDownloadProgress");
@@ -102,9 +120,15 @@ namespace ShowWrite
 
             LoadPenSettings();
             LoadThemeSettings();
+            LoadGeneralSettings();
             LoadSystemInfo();
             LoadOcrSettings();
             RefreshOcrStatus();
+        }
+
+        public SettingsWindow(CameraService cameraService) : this()
+        {
+            _cameraService = cameraService;
         }
 
         private void TogglePane_Click(object? sender, RoutedEventArgs e)
@@ -133,8 +157,8 @@ namespace ShowWrite
             var tag = selectedItem.Tag?.ToString();
 
             if (_generalPage != null) _generalPage.IsVisible = tag == "general";
+            if (_appearancePage != null) _appearancePage.IsVisible = tag == "appearance";
             if (_penPage != null) _penPage.IsVisible = tag == "pen";
-            if (_cameraPage != null) _cameraPage.IsVisible = tag == "camera";
             if (_ocrPage != null)
             {
                 _ocrPage.IsVisible = tag == "ocr";
@@ -177,6 +201,114 @@ namespace ShowWrite
             }
         }
 
+        /// <summary>加载常规设置（默认摄像头、板中板按钮）。</summary>
+        private void LoadGeneralSettings()
+        {
+            var config = Config.Load();
+            if (_showPipButtonInput != null) _showPipButtonInput.IsChecked = config.ShowPictureInPicture;
+            if (_cameraKeepAliveInput != null) _cameraKeepAliveInput.IsChecked = config.CameraKeepAlive;
+            PopulateCameraComboBox(config);
+
+            // 外观：照片栏滚动条、启动图
+            if (_showPhotoScrollbarInput != null) _showPhotoScrollbarInput.IsChecked = config.ShowPhotoPanelScrollbar;
+            if (_bootImageApiInput != null) _bootImageApiInput.Text = BootImageUpdater.GetApiUrl();
+            if (_bootLocalVersionText != null) _bootLocalVersionText.Text = BootImageUpdater.GetLocalVersion() ?? "(未安装)";
+        }
+
+        // ---------- 启动图 ----------
+
+        /// <summary>刷新版本：请求 API 显示远端最新启动图版本。</summary>
+        private async void RefreshBootVersion_Click(object? sender, RoutedEventArgs e)
+        {
+            if (_bootStatusText != null) _bootStatusText.Text = "正在获取版本...";
+            var url = string.IsNullOrWhiteSpace(_bootImageApiInput?.Text) ? null : _bootImageApiInput.Text.Trim();
+            var server = await BootImageUpdater.FetchServerInfoAsync(url);
+            if (_bootStatusText == null) return;
+            if (server == null || string.IsNullOrEmpty(server.Version))
+            {
+                _bootStatusText.Text = "获取版本失败，请检查网络或 API 地址";
+                return;
+            }
+            _bootStatusText.Text = $"最新版本: {server.Version}";
+        }
+
+        /// <summary>更新启动图：跳过版本比对强制下载并应用。</summary>
+        private async void UpdateBootImage_Click(object? sender, RoutedEventArgs e)
+        {
+            if (_bootStatusText != null) _bootStatusText.Text = "正在更新启动图...";
+            var url = string.IsNullOrWhiteSpace(_bootImageApiInput?.Text) ? null : _bootImageApiInput.Text.Trim();
+            var ok = await BootImageUpdater.CheckAndUpdateAsync(url, force: true);
+            if (_bootLocalVersionText != null) _bootLocalVersionText.Text = BootImageUpdater.GetLocalVersion() ?? "(未安装)";
+            if (_bootStatusText != null) _bootStatusText.Text = ok ? "启动图已更新" : "更新失败，请检查网络或 API 地址";
+        }
+
+        /// <summary>用缓存的摄像头列表填充下拉框。</summary>
+        private void PopulateCameraComboBox(Config config)
+        {
+            if (_defaultCameraComboBox == null) return;
+            _availableCameras = new List<int>(config.AvailableCameraIndices);
+            _defaultCameraComboBox.Items.Clear();
+
+            if (_availableCameras.Count == 0)
+            {
+                _defaultCameraComboBox.Items.Add(new ComboBoxItem { Content = "未检测到摄像头（请点击刷新）", IsEnabled = false });
+                _defaultCameraComboBox.SelectedIndex = 0;
+                return;
+            }
+
+            for (int i = 0; i < _availableCameras.Count; i++)
+            {
+                int deviceIdx = _availableCameras[i];
+                string displayName = config.AvailableCameraNames.TryGetValue(deviceIdx, out var n) && !string.IsNullOrEmpty(n)
+                    ? n
+                    : $"摄像头 {deviceIdx}";
+                _defaultCameraComboBox.Items.Add(new ComboBoxItem { Content = displayName });
+            }
+
+            int selected = config.CurrentCameraIndex;
+            if (selected < 0 || selected >= _availableCameras.Count) selected = 0;
+            _defaultCameraComboBox.SelectedIndex = selected;
+        }
+
+        /// <summary>重新扫描摄像头并刷新下拉框。</summary>
+        private async void RefreshCameraList_Click(object? sender, RoutedEventArgs e)
+        {
+            if (_defaultCameraComboBox == null) return;
+            if (sender is Button btn) btn.IsEnabled = false;
+            _defaultCameraComboBox.Items.Clear();
+            _defaultCameraComboBox.Items.Add(new ComboBoxItem { Content = "正在扫描摄像头...", IsEnabled = false });
+            _defaultCameraComboBox.SelectedIndex = 0;
+
+            var scanned = await System.Threading.Tasks.Task.Run(() =>
+            {
+                var cameras = new List<int>();
+                for (int i = 0; i < 10; i++)
+                {
+                    try
+                    {
+                        using var test = new OpenCvSharp.VideoCapture(i, OpenCvSharp.VideoCaptureAPIs.MSMF);
+                        if (test.IsOpened())
+                            cameras.Add(i);
+                    }
+                    catch { }
+                }
+                return cameras;
+            });
+
+            var config = Config.Load();
+            config.AvailableCameraIndices = scanned;
+            config.AvailableCameraNames = _cameraService?.GetCameraDeviceNames() ?? new Dictionary<int, string>();
+            config.LastScanTime = DateTime.Now;
+            // 当前默认摄像头不在新列表中时回退到第一台
+            int currentDevice = (config.CurrentCameraIndex >= 0 && config.CurrentCameraIndex < _availableCameras.Count)
+                ? _availableCameras[config.CurrentCameraIndex] : -1;
+            config.CurrentCameraIndex = scanned.IndexOf(currentDevice) >= 0 ? scanned.IndexOf(currentDevice) : 0;
+            config.Save();
+
+            PopulateCameraComboBox(config);
+            if (sender is Button b) b.IsEnabled = true;
+        }
+
         private void SavePenSettings_Click(object? sender, RoutedEventArgs e)
         {
             var config = Config.Load();
@@ -192,7 +324,19 @@ namespace ShowWrite
             if (_palmEraserThresholdInput != null) config.PenSettings.PalmEraserThreshold = (double)_palmEraserThresholdInput.Value;
 
             config.Ocr ??= new OcrSettings();
-            if (_enableAutoOcrInput != null) config.Ocr.EnableAutoOcr = _enableAutoOcrInput.IsChecked ?? true;
+            if (_enableOcrDirectoryInput != null) config.Ocr.EnableOcrDirectory = _enableOcrDirectoryInput.IsChecked ?? true;
+
+            if (_showPipButtonInput != null) config.ShowPictureInPicture = _showPipButtonInput.IsChecked ?? false;
+            if (_cameraKeepAliveInput != null) config.CameraKeepAlive = _cameraKeepAliveInput.IsChecked ?? false;
+            if (_showPhotoScrollbarInput != null) config.ShowPhotoPanelScrollbar = _showPhotoScrollbarInput.IsChecked ?? true;
+            if (_bootImageApiInput != null && !string.IsNullOrWhiteSpace(_bootImageApiInput.Text))
+            {
+                config.BootImageApiUrl = _bootImageApiInput.Text.Trim();
+            }
+            if (_defaultCameraComboBox != null && _defaultCameraComboBox.SelectedIndex >= 0 && _defaultCameraComboBox.SelectedIndex < _availableCameras.Count)
+            {
+                config.CurrentCameraIndex = _defaultCameraComboBox.SelectedIndex;
+            }
 
             if (_themeComboBox != null)
             {
@@ -241,7 +385,7 @@ namespace ShowWrite
         {
             var config = Config.Load();
             config.Ocr ??= new OcrSettings();
-            if (_enableAutoOcrInput != null) _enableAutoOcrInput.IsChecked = config.Ocr.EnableAutoOcr;
+            if (_enableOcrDirectoryInput != null) _enableOcrDirectoryInput.IsChecked = config.Ocr.EnableOcrDirectory;
             if (_ocrModelsDirText != null) _ocrModelsDirText.Text = OcrService.ModelsRoot;
             if (_customDetInput != null) _customDetInput.Text = config.Ocr.CustomDetPath ?? "";
             if (_customRecInput != null) _customRecInput.Text = config.Ocr.CustomRecPath ?? "";
