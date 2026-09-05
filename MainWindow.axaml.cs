@@ -24,6 +24,8 @@ using System.ComponentModel;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Net.Http;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Path = System.IO.Path;
@@ -90,6 +92,35 @@ namespace ShowWrite
         private Point _photoItemDragStartPoint;
         private const double PhotoItemDragThreshold = 5.0;
         private bool _isPhotoItemDragInProgress = false;
+
+        // 拖拽导入支持的可识别扩展名
+        private static readonly string[] SupportedDragDropExtensions =
+        {
+            ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".pdf", ".ppt", ".pptx"
+        };
+
+        // 延迟隐藏拖拽遮罩的计时器，避免子控件间移动时闪烁
+        private DispatcherTimer? _dragDropOverlayHideTimer;
+
+        // 用于下载网页拖出的图片
+        private static readonly HttpClient s_dropDownloadClient = CreateDropDownloadClient();
+
+        private static HttpClient CreateDropDownloadClient()
+        {
+            var client = new HttpClient(new HttpClientHandler
+            {
+                AllowAutoRedirect = true,
+                AutomaticDecompression = System.Net.DecompressionMethods.All
+            })
+            {
+                Timeout = TimeSpan.FromSeconds(30)
+            };
+            // 部分图床会拒绝无浏览器标识的请求
+            client.DefaultRequestHeaders.Add("User-Agent",
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36");
+            client.DefaultRequestHeaders.Add("Accept", "image/avif,image/webp,image/apng,image/*,*/*;q=0.8");
+            return client;
+        }
 
         public bool IsSelectMode
         {
@@ -166,6 +197,12 @@ namespace ShowWrite
             this.WindowState = WindowState.FullScreen;
             this.KeyDown += MainWindow_KeyDown;
             Photos.CollectionChanged += Photos_CollectionChanged;
+
+            // 拖拽导入：支持将文件拖到窗口上直接导入
+            DragDrop.SetAllowDrop(this, true);
+            this.AddHandler(DragDrop.DragOverEvent, Window_DragOver, handledEventsToo: true);
+            this.AddHandler(DragDrop.DropEvent, Window_Drop, handledEventsToo: true);
+            this.AddHandler(DragDrop.DragLeaveEvent, Window_DragLeave, handledEventsToo: true);
 
             _clearSlidePopup = this.FindControl<Popup>("ClearSlidePopup");
             _normalButtons = this.FindControl<StackPanel>("NormalButtons");
@@ -2699,6 +2736,352 @@ namespace ShowWrite
             finally
             {
                 ImportingOverlay.IsVisible = false;
+            }
+        }
+
+        private static bool IsSupportedDropFile(Avalonia.Platform.Storage.IStorageItem? item)
+        {
+            if (item is not Avalonia.Platform.Storage.IStorageFile) return false;
+            var ext = Path.GetExtension(item.Path.LocalPath)?.ToLowerInvariant();
+            return !string.IsNullOrEmpty(ext) && SupportedDragDropExtensions.Contains(ext);
+        }
+
+        /// <summary>
+        /// 调试日志：记录拖放时浏览器提供的实际格式，便于排查。
+        /// </summary>
+        private static void LogDropDebug(string message)
+        {
+            try
+            {
+                File.AppendAllText(Path.Combine(Path.GetTempPath(), "ShowWrite_DropDebug.log"),
+                    $"[{DateTime.Now:HH:mm:ss.fff}] {message}\n");
+            }
+            catch
+            {
+                // 日志失败不影响主流程
+            }
+        }
+
+        private static void LogDropFormats(Avalonia.Input.IDataTransfer dataTransfer, string context)
+        {
+            try
+            {
+                var formats = string.Join(", ", dataTransfer.Formats.Select(f => f.Identifier));
+                LogDropDebug($"{context} formats: [{formats}]");
+            }
+            catch (Exception ex)
+            {
+                LogDropDebug($"{context} formats 枚举失败: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 解码拖拽数据中的字节（自动识别 UTF-8 / UTF-16）。
+        /// </summary>
+        private static string DecodeDropBytes(byte[] bytes)
+        {
+            // UTF-16 LE 特征：每隔一个字节出现 0x00（ASCII 范围字符）
+            var zeroAtEven = 0;
+            var zeroAtOdd = 0;
+            var checkLen = Math.Min(bytes.Length, 256);
+            for (var i = 0; i < checkLen; i++)
+            {
+                if (bytes[i] == 0)
+                {
+                    if (i % 2 == 0) zeroAtEven++;
+                    else zeroAtOdd++;
+                }
+            }
+            if (zeroAtOdd > checkLen / 4)
+                return Encoding.Unicode.GetString(bytes).TrimEnd('\0');
+            if (zeroAtEven > checkLen / 4)
+                return Encoding.BigEndianUnicode.GetString(bytes).TrimEnd('\0');
+            return Encoding.UTF8.GetString(bytes).TrimEnd('\0');
+        }
+
+        /// <summary>
+        /// 从拖拽数据中提取图片 URL（网页拖出的图片通常以 URL 格式或纯文本提供链接）。
+        /// </summary>
+        private static string? TryGetDragImageUrl(Avalonia.Input.IDataTransfer dataTransfer)
+        {
+            try
+            {
+                // 浏览器拖出图片时提供 URL 格式（自定义剪贴板格式，Avalonia 以 byte[] 暴露）
+                // Chrome/Edge: "UniformResourceLocator"/"UniformResourceLocatorW"；Firefox: "text/x-moz-url"；标准: "text/uri-list"
+                var uriFormats = dataTransfer.Formats.Where(f =>
+                    f.Identifier.Equals("text/uri-list", StringComparison.OrdinalIgnoreCase)
+                    || f.Identifier.Equals("UniformResourceLocator", StringComparison.OrdinalIgnoreCase)
+                    || f.Identifier.Equals("UniformResourceLocatorW", StringComparison.OrdinalIgnoreCase)
+                    || f.Identifier.Equals("text/x-moz-url", StringComparison.OrdinalIgnoreCase)
+                    || f.Identifier.Equals("UniformResourceLocator (Unicode)", StringComparison.OrdinalIgnoreCase))
+                    .ToList();
+
+                foreach (var uriFormat in uriFormats)
+                {
+                    foreach (var item in dataTransfer.GetItems(uriFormat))
+                    {
+                        if (item.TryGetRaw(uriFormat) is byte[] bytes && bytes.Length > 0)
+                        {
+                            // text/x-moz-url 为 "url\0title\0" 形式，先按整体解析
+                            var text = DecodeDropBytes(bytes).TrimStart('\ufeff', '\u2011');
+                            // uri-list 每行一个 URL，可能带注释行（# 开头），取第一个有效 URL
+                            var url = text.Split('\n')
+                                .Select(l => l.Trim('\r', ' ', '\0'))
+                                .SelectMany(l => l.Split('\0')) // moz-url 形式
+                                .Select(l => l.Trim())
+                                .FirstOrDefault(l => l.StartsWith("http://", StringComparison.OrdinalIgnoreCase)
+                                    || l.StartsWith("https://", StringComparison.OrdinalIgnoreCase));
+                            if (url != null) return url;
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                LogDropDebug($"URL 格式读取异常: {ex.Message}");
+            }
+
+            // 纯文本形式（浏览器拖图片时也会提供 URL 文本）
+            try
+            {
+                var textUrl = dataTransfer.TryGetText()?.Trim();
+                if (!string.IsNullOrEmpty(textUrl)
+                    && (textUrl.StartsWith("http://", StringComparison.OrdinalIgnoreCase)
+                        || textUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase)))
+                {
+                    return textUrl;
+                }
+            }
+            catch
+            {
+                // 忽略
+            }
+
+            return null;
+        }
+
+        private bool HasSupportedDragContent(DragEventArgs e)
+        {
+            if (e.DataTransfer.Contains(DataFormat.File))
+            {
+                var files = e.DataTransfer.TryGetFiles();
+                if (files?.Any(IsSupportedDropFile) ?? false) return true;
+            }
+
+            // 网页上拖出的图片可能以位图或 URL 形式提供
+            if (e.DataTransfer.Contains(DataFormat.Bitmap)) return true;
+            if (TryGetDragImageUrl(e.DataTransfer) != null) return true;
+
+            return false;
+        }
+
+        private void Window_DragOver(object? sender, DragEventArgs e)
+        {
+            e.Handled = true;
+
+            var hasSupported = HasSupportedDragContent(e);
+
+            e.DragEffects = hasSupported ? DragDropEffects.Copy : DragDropEffects.None;
+            if (hasSupported)
+            {
+                DragDropOverlay.IsVisible = true;
+            }
+
+            // 重置隐藏计时，拖拽经过期间保持显示
+            RestartDragOverlayHideDelay();
+        }
+
+        private void Window_DragLeave(object? sender, DragEventArgs e)
+        {
+            e.Handled = true;
+
+            // 鼠标在窗口内子控件之间移动时也会触发 DragLeave，
+            // 通过位置判断：仍在窗口客户区内则忽略
+            var pos = e.GetPosition(this);
+            var bounds = new Rect(0, 0, Bounds.Width, Bounds.Height);
+            if (bounds.Contains(pos))
+            {
+                return;
+            }
+
+            RestartDragOverlayHideDelay();
+        }
+
+        private void RestartDragOverlayHideDelay()
+        {
+            _dragDropOverlayHideTimer?.Stop();
+            _dragDropOverlayHideTimer ??= new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(150) };
+            _dragDropOverlayHideTimer.Tick -= OnDragOverlayHideTimerTick;
+            _dragDropOverlayHideTimer.Tick += OnDragOverlayHideTimerTick;
+            _dragDropOverlayHideTimer.Start();
+        }
+
+        private void OnDragOverlayHideTimerTick(object? sender, EventArgs e)
+        {
+            if (_dragDropOverlayHideTimer != null)
+            {
+                _dragDropOverlayHideTimer.Stop();
+                DragDropOverlay.IsVisible = false;
+            }
+        }
+
+        private async void Window_Drop(object? sender, DragEventArgs e)
+        {
+            e.Handled = true;
+            _dragDropOverlayHideTimer?.Stop();
+            DragDropOverlay.IsVisible = false;
+
+            LogDropFormats(e.DataTransfer, "Drop");
+
+            // 在任何 await 之前提取拖拽数据（DataTransfer 在事件返回后可能被释放）
+            var localFiles = new List<(string Path, Avalonia.Platform.Storage.IStorageFile? File)>();
+            var allDropFiles = new List<string>();
+            try
+            {
+                allDropFiles = e.DataTransfer.TryGetFiles()?.Select(f => f.Path.LocalPath).ToList() ?? allDropFiles;
+            }
+            catch { }
+            LogDropDebug($"Drop files: [{string.Join(", ", allDropFiles)}]");
+
+            if (e.DataTransfer.Contains(DataFormat.File))
+            {
+                var files = e.DataTransfer.TryGetFiles()
+                    ?.Where(IsSupportedDropFile)
+                    .OfType<Avalonia.Platform.Storage.IStorageFile>()
+                    .ToList();
+
+                if (files != null)
+                {
+                    localFiles.AddRange(files.Select(f => (f.Path.LocalPath, f)));
+                }
+            }
+
+            var hasBitmap = e.DataTransfer.Contains(DataFormat.Bitmap);
+            var imageUrl = TryGetDragImageUrl(e.DataTransfer);
+            LogDropDebug($"Drop imageUrl: {imageUrl ?? "(null)"}, hasBitmap: {hasBitmap}, localFiles: {localFiles.Count}");
+
+            // 优先处理本地文件
+            if (localFiles.Count > 0)
+            {
+                var paths = new List<string>();
+                foreach (var (path, file) in localFiles)
+                {
+                    if (File.Exists(path))
+                    {
+                        paths.Add(path);
+                    }
+                    else if (file != null)
+                    {
+                        // 虚拟文件：读取流保存到临时目录
+                        try
+                        {
+                            await using var stream = await file.OpenReadAsync();
+                            var fileName = !string.IsNullOrWhiteSpace(file.Name)
+                                ? file.Name
+                                : $"dropped_{DateTime.Now:HHmmss}_{Guid.NewGuid():N}.png";
+                            var tempPath = Path.Combine(Path.GetTempPath(), "ShowWrite_Drops", fileName);
+                            Directory.CreateDirectory(Path.GetDirectoryName(tempPath)!);
+                            await using var fs = File.Create(tempPath);
+                            await stream.CopyToAsync(fs);
+                            paths.Add(tempPath);
+                        }
+                        catch (Exception ex)
+                        {
+                            LogDropDebug($"虚拟文件读取失败: {ex.Message}");
+                        }
+                    }
+                }
+
+                if (paths.Count > 0)
+                {
+                    OpenFiles(paths);
+                    return;
+                }
+            }
+
+            // 回退1：网页拖出的位图数据直接保存为图片
+            if (hasBitmap)
+            {
+                var bitmap = e.DataTransfer.TryGetBitmap();
+                if (bitmap != null)
+                {
+                    try
+                    {
+                        var tempPath = Path.Combine(Path.GetTempPath(), "ShowWrite_Drops",
+                            $"dropped_{DateTime.Now:HHmmss}_{Guid.NewGuid():N}.png");
+                        Directory.CreateDirectory(Path.GetDirectoryName(tempPath)!);
+                        using (var fs = File.Create(tempPath))
+                        {
+                            bitmap.Save(fs);
+                        }
+                        bitmap.Dispose();
+                        OpenFiles(new List<string> { tempPath });
+                        return;
+                    }
+                    catch
+                    {
+                        bitmap.Dispose();
+                    }
+                }
+            }
+
+            // 回退2：网页拖出的图片仅有 URL（Chrome 等浏览器），下载后导入
+            if (imageUrl != null)
+            {
+                var tempPath = await DownloadDroppedImageAsync(imageUrl);
+                if (tempPath != null)
+                {
+                    OpenFiles(new List<string> { tempPath });
+                }
+            }
+        }
+
+        /// <summary>
+        /// 下载网页拖出图片的 URL 到临时目录，非图片内容返回 null。
+        /// </summary>
+        private static async Task<string?> DownloadDroppedImageAsync(string url)
+        {
+            try
+            {
+                LogDropDebug($"开始下载: {url}");
+                using var response = await s_dropDownloadClient.GetAsync(url);
+                LogDropDebug($"下载响应: {(int)response.StatusCode} {response.StatusCode}, content-type: {response.Content.Headers.ContentType?.MediaType ?? "(none)"}");
+                if (!response.IsSuccessStatusCode) return null;
+
+                var contentType = response.Content.Headers.ContentType?.MediaType?.ToLowerInvariant() ?? "";
+
+                // 根据内容类型确定扩展名；非图片内容直接拒绝
+                string ext;
+                if (contentType.Contains("png")) ext = ".png";
+                else if (contentType.Contains("jpeg") || contentType.Contains("jpg")) ext = ".jpg";
+                else if (contentType.Contains("gif")) ext = ".gif";
+                else if (contentType.Contains("bmp")) ext = ".bmp";
+                else if (contentType.Contains("webp")) ext = ".webp";
+                else if (contentType.StartsWith("image/"))
+                {
+                    // 其它图片类型：解码基于内容而非扩展名，统一保存为 png 后缀
+                    ext = ".png";
+                }
+                else
+                {
+                    // 内容类型缺失时，URL 中带图片扩展名也接受
+                    var urlExt = Path.GetExtension(new Uri(url).AbsolutePath).ToLowerInvariant();
+                    if (SupportedDragDropExtensions.Contains(urlExt)) ext = urlExt;
+                    else return null;
+                }
+
+                var fileName = $"dropped_{DateTime.Now:HHmmss}_{Guid.NewGuid():N}{ext}";
+                var tempPath = Path.Combine(Path.GetTempPath(), "ShowWrite_Drops", fileName);
+                Directory.CreateDirectory(Path.GetDirectoryName(tempPath)!);
+                await using var fs = File.Create(tempPath);
+                await response.Content.CopyToAsync(fs);
+                LogDropDebug($"下载完成: {tempPath}");
+                return tempPath;
+            }
+            catch (Exception ex)
+            {
+                LogDropDebug($"下载失败: {ex.Message}");
+                return null;
             }
         }
 
