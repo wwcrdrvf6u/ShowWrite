@@ -215,7 +215,7 @@ namespace ShowWrite
 
     /// <summary>
     /// 启动图目录文件（m.json）：按日历日期指向 bootP 目录内的图片。
-    /// 日期格式：yyyy-MM-dd 为一次性日期，MM-dd 为每年循环；end 可选，表示日期区间（支持跨年如 12-25~01-01）。
+    /// 日期格式为 yyyy-MM-dd，仅在指定日期当天显示一次，其他日期回退内置启动图。
     /// </summary>
     public class BootManifest
     {
@@ -263,68 +263,16 @@ namespace ShowWrite
         [JsonPropertyName("date")]
         public string? Date { get; set; }
 
-        [JsonPropertyName("end")]
-        public string? End { get; set; }
-
         [JsonPropertyName("image")]
         public string? Image { get; set; }
 
+        /// <summary>仅当今天与 date（yyyy-MM-dd）完全一致时命中，即一年只在本年的这一天显示一次。</summary>
         public bool Matches(DateTime today)
         {
-            if (!TryParse(Date, out var startDate, out var startMd))
-                return false;
-
-            bool hasEnd = !string.IsNullOrWhiteSpace(End);
-            if (hasEnd)
-            {
-                if (!TryParse(End, out var endDate, out var endMd))
-                    return false;
-
-                // 完整日期区间
-                if (startDate != default && endDate != default)
-                    return today.Date >= startDate && today.Date <= endDate;
-                // 每年循环区间（MM-dd，支持跨年）
-                if (startMd >= 0 && endMd >= 0)
-                {
-                    int todayMd = today.Month * 100 + today.Day;
-                    return startMd <= endMd
-                        ? todayMd >= startMd && todayMd <= endMd
-                        : todayMd >= startMd || todayMd <= endMd;
-                }
-                return false;
-            }
-
-            // 单日
-            if (startDate != default)
-                return today.Date == startDate;
-            if (startMd >= 0)
-                return today.Month * 100 + today.Day == startMd;
-            return false;
-        }
-
-        /// <summary>解析日期串：yyyy-MM-dd 输出 exact；MM-dd 输出 md（MM*100+dd）。</summary>
-        private static bool TryParse(string? s, out DateTime exact, out int md)
-        {
-            exact = default;
-            md = -1;
-            if (string.IsNullOrWhiteSpace(s))
-                return false;
-
-            var parts = s.Split('-');
-            if (parts.Length == 3)
-            {
-                return DateTime.TryParseExact(s, "yyyy-MM-dd",
-                    System.Globalization.CultureInfo.InvariantCulture,
-                    System.Globalization.DateTimeStyles.None, out exact);
-            }
-            if (parts.Length == 2
-                && int.TryParse(parts[0], out int m) && int.TryParse(parts[1], out int d)
-                && m >= 1 && m <= 12 && d >= 1 && d <= 31)
-            {
-                md = m * 100 + d;
-                return true;
-            }
-            return false;
+            return DateTime.TryParseExact(Date, "yyyy-MM-dd",
+                System.Globalization.CultureInfo.InvariantCulture,
+                System.Globalization.DateTimeStyles.None, out var date)
+                && today.Date == date;
         }
     }
 }
