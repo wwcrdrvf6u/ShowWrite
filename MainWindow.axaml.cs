@@ -1311,6 +1311,13 @@ namespace ShowWrite
             {
                 var uuid = await LicenseManager.Instance.GetOrCreateLicenseAsync();
                 System.Diagnostics.Debug.WriteLine($"[MainWindow] 许可证初始化成功，UUID: {uuid}");
+
+                // 上报 PostHog 启动事件（fire-and-forget，不阻塞）
+                _ = PostHogService.CaptureWithDistinctIdAsync(uuid, "app_start", new
+                {
+                    app_version = typeof(MainWindow).Assembly.GetName().Version?.ToString(),
+                    os = Environment.OSVersion.VersionString
+                });
             }
             catch (Exception ex)
             {
@@ -2653,7 +2660,7 @@ namespace ShowWrite
 
                         if (path.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase))
                         {
-                            var imagePaths = PdfService.ConvertPdfToImages(path);
+                            var imagePaths = PdfService.ConvertPdfToImages(path, customDpi: Config.Load().PdfImportDpi);
 
                             await Dispatcher.UIThread.InvokeAsync(() =>
                             {
@@ -2737,7 +2744,7 @@ namespace ShowWrite
                     {
                         if (path.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase))
                         {
-                            var imagePaths = PdfService.ConvertPdfToImages(path);
+                            var imagePaths = PdfService.ConvertPdfToImages(path, customDpi: Config.Load().PdfImportDpi);
 
                             await Dispatcher.UIThread.InvokeAsync(() =>
                             {

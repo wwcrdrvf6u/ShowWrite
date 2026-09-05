@@ -77,6 +77,8 @@ namespace ShowWrite
         public bool CameraKeepAlive { get; set; } = false;
         // 是否显示照片栏滚动条
         public bool ShowPhotoPanelScrollbar { get; set; } = true;
+        // PDF 导入分辨率（DPI，数值越高导入质量越好但耗时更长）
+        public int PdfImportDpi { get; set; } = 300;
         // 启动图版本 API（默认当前使用的地址）
         public string BootImageApiUrl { get; set; } = "https://sxvillage.dpdns.org/bootp/api/app";
         public RandomNoteConfig RandomNote { get; set; } = new RandomNoteConfig();

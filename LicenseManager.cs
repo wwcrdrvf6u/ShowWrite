@@ -6,6 +6,7 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace ShowWrite
@@ -84,17 +85,65 @@ namespace ShowWrite
             return uuid;
         }
 
+        // OEM 机器未烧录序列号时返回的占位符（统一小写比较）
+        private static readonly string[] PlaceholderSerials =
+        {
+            "to be filled by o.e.m",
+            "to be filled by o.e.m.",
+            "to be filled",
+            "none",
+            "default string",
+            "not specified",
+            "not available",
+            "unknown",
+            "system serial number"
+        };
+
         public string GetMotherboardSerialNumber()
+        {
+            string serial = QueryWmiSerial("SELECT SerialNumber FROM Win32_BaseBoard");
+            if (!IsPlaceholderSerial(serial))
+            {
+                return serial;
+            }
+
+            Debug.WriteLine("[LicenseManager] 主板序列号为占位符，回退到 BIOS 序列号");
+            serial = QueryWmiSerial("SELECT SerialNumber FROM Win32_BIOS");
+            if (!IsPlaceholderSerial(serial))
+            {
+                return serial;
+            }
+
+            Debug.WriteLine("[LicenseManager] BIOS 序列号也为占位符，回退到注册表 MachineGuid");
+            try
+            {
+                using var key = Microsoft.Win32.RegistryKey
+                    .OpenBaseKey(Microsoft.Win32.RegistryHive.LocalMachine, Microsoft.Win32.RegistryView.Registry64)
+                    .OpenSubKey(@"SOFTWARE\Microsoft\Cryptography");
+                var guid = key?.GetValue("MachineGuid")?.ToString();
+                if (!string.IsNullOrWhiteSpace(guid))
+                {
+                    return guid;
+                }
+            }
+            catch
+            {
+            }
+
+            return string.Empty;
+        }
+
+        private static string QueryWmiSerial(string query)
         {
             try
             {
-                var searcher = new ManagementObjectSearcher("SELECT SerialNumber FROM Win32_BaseBoard");
+                var searcher = new ManagementObjectSearcher(query);
                 foreach (ManagementObject obj in searcher.Get())
                 {
                     var serial = obj["SerialNumber"]?.ToString();
                     if (!string.IsNullOrWhiteSpace(serial))
                     {
-                        return serial;
+                        return serial.Trim();
                     }
                 }
             }
@@ -102,6 +151,28 @@ namespace ShowWrite
             {
             }
             return string.Empty;
+        }
+
+        private static bool IsPlaceholderSerial(string serial)
+        {
+            if (string.IsNullOrWhiteSpace(serial))
+            {
+                return true;
+            }
+
+            string normalized = serial.Trim().ToLowerInvariant();
+            if (PlaceholderSerials.Contains(normalized))
+            {
+                return true;
+            }
+
+            // 全为重复字符的序列号（如 "xxxxxxxx"）也视为占位符
+            if (normalized.Length > 1 && normalized.All(c => c == normalized[0]))
+            {
+                return true;
+            }
+
+            return false;
         }
 
         private string ReadLocalLicense()

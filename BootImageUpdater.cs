@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
 using System.Net.Http;
@@ -210,5 +211,120 @@ namespace ShowWrite
 
         [JsonPropertyName("image_url")]
         public string? ImageUrl { get; set; }
+    }
+
+    /// <summary>
+    /// 启动图目录文件（m.json）：按日历日期指向 bootP 目录内的图片。
+    /// 日期格式：yyyy-MM-dd 为一次性日期，MM-dd 为每年循环；end 可选，表示日期区间（支持跨年如 12-25~01-01）。
+    /// </summary>
+    public class BootManifest
+    {
+        [JsonPropertyName("version")]
+        public string? Version { get; set; }
+
+        [JsonPropertyName("days")]
+        public List<BootDay> Days { get; set; } = new();
+
+        /// <summary>从 bootP 目录读取 m.json，不存在或解析失败返回 null。</summary>
+        public static BootManifest? Load()
+        {
+            var path = Path.Combine(Config.GetBootPath(), "m.json");
+            if (!File.Exists(path))
+                return null;
+            try
+            {
+                return JsonSerializer.Deserialize<BootManifest>(File.ReadAllText(path));
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        /// <summary>返回今天命中的启动图完整路径（文件不存在则不算命中），未命中返回 null。</summary>
+        public string? ResolveImageForDate(DateTime date)
+        {
+            foreach (var day in Days)
+            {
+                if (!day.Matches(date) || string.IsNullOrWhiteSpace(day.Image))
+                    continue;
+
+                var imagePath = Path.Combine(Config.GetBootPath(), day.Image);
+                if (File.Exists(imagePath))
+                    return imagePath;
+            }
+            return null;
+        }
+    }
+
+    /// <summary>目录文件中的单个日期条目。</summary>
+    public class BootDay
+    {
+        [JsonPropertyName("date")]
+        public string? Date { get; set; }
+
+        [JsonPropertyName("end")]
+        public string? End { get; set; }
+
+        [JsonPropertyName("image")]
+        public string? Image { get; set; }
+
+        public bool Matches(DateTime today)
+        {
+            if (!TryParse(Date, out var startDate, out var startMd))
+                return false;
+
+            bool hasEnd = !string.IsNullOrWhiteSpace(End);
+            if (hasEnd)
+            {
+                if (!TryParse(End, out var endDate, out var endMd))
+                    return false;
+
+                // 完整日期区间
+                if (startDate != default && endDate != default)
+                    return today.Date >= startDate && today.Date <= endDate;
+                // 每年循环区间（MM-dd，支持跨年）
+                if (startMd >= 0 && endMd >= 0)
+                {
+                    int todayMd = today.Month * 100 + today.Day;
+                    return startMd <= endMd
+                        ? todayMd >= startMd && todayMd <= endMd
+                        : todayMd >= startMd || todayMd <= endMd;
+                }
+                return false;
+            }
+
+            // 单日
+            if (startDate != default)
+                return today.Date == startDate;
+            if (startMd >= 0)
+                return today.Month * 100 + today.Day == startMd;
+            return false;
+        }
+
+        /// <summary>解析日期串：yyyy-MM-dd 输出 exact；MM-dd 输出 md（MM*100+dd）。</summary>
+        private static bool TryParse(string? s, out DateTime exact, out int md)
+        {
+            exact = default;
+            md = -1;
+            if (string.IsNullOrWhiteSpace(s))
+                return false;
+
+            var parts = s.Split('-');
+            if (parts.Length == 3)
+            {
+                return DateTime.TryParseExact(s, "yyyy-MM-dd",
+                    System.Globalization.CultureInfo.InvariantCulture,
+                    System.Globalization.DateTimeStyles.None, out exact);
+            }
+            if (parts.Length == 2
+                && int.TryParse(parts[0], out int m) && int.TryParse(parts[1], out int d)
+                && m >= 1 && m <= 12 && d >= 1 && d <= 31)
+            {
+                md = m * 100 + d;
+                return true;
+            }
+            return false;
+        }
     }
 }

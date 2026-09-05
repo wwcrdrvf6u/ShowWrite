@@ -27,8 +27,7 @@
 	  <None Remove="Plugins\**" />
 	</ItemGroup>
 	<ItemGroup>
-	  <AvaloniaResource Include="SW新圆角logo_256x256.ico" />
-	  <AvaloniaResource Include="boot.png" />
+		<AvaloniaResource Include="SW新圆角logo_256x256.ico" />
 	</ItemGroup>
 
 	<ItemGroup>

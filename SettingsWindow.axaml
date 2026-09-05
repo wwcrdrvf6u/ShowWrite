@@ -203,6 +203,16 @@
                                                 <CheckBox x:Name="CameraKeepAliveInput" IsChecked="False"/>
                                             </StackPanel>
                                         </Grid>
+
+                                        <Grid ColumnDefinitions="Auto,*">
+                                            <TextBlock Grid.Column="0" Text="PDF导入分辨率" Classes="setting-label" Width="140"/>
+                                            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                                                <NumericUpDown x:Name="PdfImportDpiInput" Classes="setting-input"
+                                                               Minimum="72" Maximum="600" Increment="50" Value="300" FormatString="0"/>
+                                                <TextBlock Text="DPI" Classes="setting-label"/>
+                                                <TextBlock Text="(数值越高，导入质量越好，但导入时间也会更长)" Foreground="{DynamicResource ThemeTextTertiary}" VerticalAlignment="Center" FontSize="11"/>
+                                            </StackPanel>
+                                        </Grid>
                                     </StackPanel>
                                 </Border>
                             </StackPanel>
@@ -448,7 +458,7 @@
                             
                             <StackPanel x:Name="AboutPage" IsVisible="False" Spacing="16">
                                 <TextBlock Text="关于" Classes="setting-title"/>
-                                <TextBlock Text="ShowWrite v1.0" Foreground="{DynamicResource ThemeTextSecondary}" FontSize="14"/>
+                                <TextBlock Text="ShowWrite v2.4.0.0" Foreground="{DynamicResource ThemeTextSecondary}" FontSize="14"/>
                                 <TextBlock Text="一款简单易用的书写展示工具" Foreground="{DynamicResource ThemeTextTertiary}"/>
                                 
                                 <Border Background="{DynamicResource ThemeSurface}" CornerRadius="8" Padding="16" Margin="0,16,0,0">
@@ -459,7 +469,7 @@
                                             <TextBlock x:Name="MotherboardSerialText" Grid.Column="1" Text="正在获取..." Foreground="{DynamicResource ThemeTextSecondary}" FontSize="13" TextWrapping="Wrap"/>
                                         </Grid>
                                         <Grid ColumnDefinitions="Auto,*">
-                                            <TextBlock Grid.Column="0" Text="注册 UUID：" Classes="setting-label" Width="100"/>
+                                            <TextBlock Grid.Column="0" Text="UUID：" Classes="setting-label" Width="100"/>
                                             <TextBlock x:Name="UuidText" Grid.Column="1" Text="正在获取..." Foreground="{DynamicResource ThemeTextSecondary}" FontSize="13" TextWrapping="Wrap"/>
                                         </Grid>
                                     </StackPanel>

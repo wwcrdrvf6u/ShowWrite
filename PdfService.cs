@@ -14,7 +14,7 @@ public static class PdfService
     private const int HighDpi = 300;
     private const int UltraHighDpi = 600;
 
-    public static List<string> ConvertPdfToImages(string pdfPath, string? outputDirectory = null, bool ultraHighQuality = false)
+    public static List<string> ConvertPdfToImages(string pdfPath, string? outputDirectory = null, bool ultraHighQuality = false, int? customDpi = null)
     {
         var imagePaths = new List<string>();
 
@@ -36,7 +36,7 @@ public static class PdfService
             var semaphore = new SemaphoreSlim(maxDegree, maxDegree);
             var tasks = new List<Task>();
 
-            int dpi = ultraHighQuality ? UltraHighDpi : HighDpi;
+            int dpi = customDpi ?? (ultraHighQuality ? UltraHighDpi : HighDpi);
 
             for (int pageIndex = 0; pageIndex < pageCount; pageIndex++)
             {

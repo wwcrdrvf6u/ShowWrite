@@ -34,6 +34,7 @@ namespace ShowWrite
         private CheckBox? _showPipButtonInput;
         private CheckBox? _cameraKeepAliveInput;
         private CheckBox? _showPhotoScrollbarInput;
+        private NumericUpDown? _pdfImportDpiInput;
         private TextBox? _bootImageApiInput;
         private TextBlock? _bootLocalVersionText;
         private TextBlock? _bootStatusText;
@@ -92,6 +93,7 @@ namespace ShowWrite
             _showPipButtonInput = this.FindControl<CheckBox>("ShowPipButtonInput");
             _cameraKeepAliveInput = this.FindControl<CheckBox>("CameraKeepAliveInput");
             _showPhotoScrollbarInput = this.FindControl<CheckBox>("ShowPhotoScrollbarInput");
+            _pdfImportDpiInput = this.FindControl<NumericUpDown>("PdfImportDpiInput");
             _bootImageApiInput = this.FindControl<TextBox>("BootImageApiInput");
             _bootLocalVersionText = this.FindControl<TextBlock>("BootLocalVersionText");
             _bootStatusText = this.FindControl<TextBlock>("BootStatusText");
@@ -211,6 +213,7 @@ namespace ShowWrite
 
             // 外观：照片栏滚动条、启动图
             if (_showPhotoScrollbarInput != null) _showPhotoScrollbarInput.IsChecked = config.ShowPhotoPanelScrollbar;
+            if (_pdfImportDpiInput != null) _pdfImportDpiInput.Value = config.PdfImportDpi;
             if (_bootImageApiInput != null) _bootImageApiInput.Text = BootImageUpdater.GetApiUrl();
             if (_bootLocalVersionText != null) _bootLocalVersionText.Text = BootImageUpdater.GetLocalVersion() ?? "(未安装)";
         }
@@ -329,6 +332,7 @@ namespace ShowWrite
             if (_showPipButtonInput != null) config.ShowPictureInPicture = _showPipButtonInput.IsChecked ?? false;
             if (_cameraKeepAliveInput != null) config.CameraKeepAlive = _cameraKeepAliveInput.IsChecked ?? false;
             if (_showPhotoScrollbarInput != null) config.ShowPhotoPanelScrollbar = _showPhotoScrollbarInput.IsChecked ?? true;
+            if (_pdfImportDpiInput != null) config.PdfImportDpi = Math.Clamp((int)_pdfImportDpiInput.Value, 72, 600);
             if (_bootImageApiInput != null && !string.IsNullOrWhiteSpace(_bootImageApiInput.Text))
             {
                 config.BootImageApiUrl = _bootImageApiInput.Text.Trim();
