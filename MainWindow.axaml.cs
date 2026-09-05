@@ -3315,7 +3315,7 @@ namespace ShowWrite
 
         private void ConfirmKeystone_Click(object? sender, RoutedEventArgs e)
         {
-            var destPoints = CalculateAspectRatioDestPoints(_videoWidth, _videoHeight);
+            var destPoints = CalculateAspectRatioDestPoints(_videoWidth, _videoHeight, _keystonePoints);
             _cameraService.SetPerspectiveTransform(_keystonePoints, destPoints);
 
             SaveKeystoneSettings();
@@ -3402,7 +3402,7 @@ namespace ShowWrite
                     }
                 }
 
-                var destPoints = CalculateAspectRatioDestPoints(_videoWidth, _videoHeight);
+                var destPoints = CalculateAspectRatioDestPoints(_videoWidth, _videoHeight, sourcePoints);
                 _cameraService.SetPerspectiveTransform(sourcePoints, destPoints);
             }
         }
@@ -3506,10 +3506,10 @@ namespace ShowWrite
             }
         }
 
-        private OpenCvSharp.Point2f[] CalculateAspectRatioDestPoints(int width, int height)
+        private OpenCvSharp.Point2f[] CalculateAspectRatioDestPoints(int width, int height, OpenCvSharp.Point2f[]? sourcePoints = null)
         {
             float targetRatio = 0f;
-            
+
             switch (_selectedAspectRatio)
             {
                 case "A4 (1:1.414)":
@@ -3520,13 +3520,7 @@ namespace ShowWrite
                     break;
                 case "自由":
                 default:
-                    return new OpenCvSharp.Point2f[]
-                    {
-                        new OpenCvSharp.Point2f(0, 0),
-                        new OpenCvSharp.Point2f(width, 0),
-                        new OpenCvSharp.Point2f(width, height),
-                        new OpenCvSharp.Point2f(0, height)
-                    };
+                    return CalculateAutoRatioDestPoints(width, height, sourcePoints);
             }
 
             float currentRatio = (float)height / width;
@@ -3554,6 +3548,59 @@ namespace ShowWrite
                 new OpenCvSharp.Point2f(width + offsetX, height + offsetY),
                 new OpenCvSharp.Point2f(-offsetX, height + offsetY)
             };
+        }
+
+        /// <summary>
+        /// "自由"模式：根据框选的 4 个角点自动计算梯形的真实宽高比例，
+        /// 然后等比例缩放为画面内可容纳的最大矩形（居中）作为目标尺寸。
+        /// 宽取上下边长均值，高取左右边长均值。
+        /// </summary>
+        private OpenCvSharp.Point2f[] CalculateAutoRatioDestPoints(int width, int height, OpenCvSharp.Point2f[]? sourcePoints)
+        {
+            var fullFrame = new OpenCvSharp.Point2f[]
+            {
+                new OpenCvSharp.Point2f(0, 0),
+                new OpenCvSharp.Point2f(width, 0),
+                new OpenCvSharp.Point2f(width, height),
+                new OpenCvSharp.Point2f(0, height)
+            };
+
+            if (sourcePoints == null || sourcePoints.Length != 4)
+                return fullFrame;
+
+            // sourcePoints 顺序：TL, TR, BR, BL
+            float topWidth = Distance(sourcePoints[0], sourcePoints[1]);
+            float bottomWidth = Distance(sourcePoints[3], sourcePoints[2]);
+            float leftHeight = Distance(sourcePoints[0], sourcePoints[3]);
+            float rightHeight = Distance(sourcePoints[1], sourcePoints[2]);
+
+            float quadWidth = (topWidth + bottomWidth) / 2f;
+            float quadHeight = (leftHeight + rightHeight) / 2f;
+
+            if (quadWidth <= 0f || quadHeight <= 0f || float.IsNaN(quadWidth) || float.IsNaN(quadHeight))
+                return fullFrame;
+
+            // 等比例放大/缩小：在画面内放下保持真实宽高比的最大矩形
+            float scale = Math.Min(width / quadWidth, height / quadHeight);
+            float targetWidth = quadWidth * scale;
+            float targetHeight = quadHeight * scale;
+            float offsetX = (width - targetWidth) / 2f;
+            float offsetY = (height - targetHeight) / 2f;
+
+            return new OpenCvSharp.Point2f[]
+            {
+                new OpenCvSharp.Point2f(offsetX, offsetY),
+                new OpenCvSharp.Point2f(offsetX + targetWidth, offsetY),
+                new OpenCvSharp.Point2f(offsetX + targetWidth, offsetY + targetHeight),
+                new OpenCvSharp.Point2f(offsetX, offsetY + targetHeight)
+            };
+        }
+
+        private static float Distance(OpenCvSharp.Point2f a, OpenCvSharp.Point2f b)
+        {
+            float dx = a.X - b.X;
+            float dy = a.Y - b.Y;
+            return (float)Math.Sqrt(dx * dx + dy * dy);
         }
 
         #endregion
