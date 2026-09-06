@@ -42,6 +42,24 @@ namespace ShowWrite
 
         private WriteableBitmap? _displayBitmap;
 
+        // 已提交笔迹的屏幕空间缓存：缩放/平移/书写时只搬运缓存位图，无需每帧重绘全部笔迹
+        private SKBitmap? _inkCache;
+        private bool _inkCacheDirty = true;
+        private double _cacheZoom = 1.0;          // 构建缓存时使用的缩放
+        private Point _cacheOffset = new Point(0, 0); // 构建缓存时使用的平移（pan + zoomBorderOffset）
+        private double _prevRenderZoom = double.NaN;
+        private double _prevRenderOffsetX = double.NaN;
+        private double _prevRenderOffsetY = double.NaN;
+        private DateTime _lastTransformChangeUtc = DateTime.MinValue;
+        private DateTime _lastEraseRebuildUtc = DateTime.MinValue;
+        private double _displayZoom = double.NaN;   // _displayBitmap 内容渲染时使用的变换
+        private Point _displayOffset = new Point(0, 0);
+        private bool _forceContentRender = true;    // 强制下一帧重写 _displayBitmap（内容变化时）
+        private DispatcherTimer? _cacheRebuildTimer;
+        private const double CacheRebuildDelayMs = 120;      // 变换稳定后重建缓存的延迟
+        private const double CacheRebuildScaleDrift = 0.25;  // 连续缩放超过 25% 强制重建，避免过度模糊
+        private const double EraseRebuildIntervalMs = 50;    // 擦除拖动期间的缓存重建节流间隔
+
         private bool _isDrawing;
         private bool _invalidateScheduled = false;
 
@@ -50,6 +68,12 @@ namespace ShowWrite
         private double _currentZoom = 1.0;
         private Point _currentPan = new Point(0, 0);
         private Point _zoomBorderOffset = new Point(0, 0);
+
+        // 渲染时实际使用的变换（可能处于动画中间状态，与摄像头画面的过渡动画保持同步）
+        private double _renderZoom = 1.0;
+        private Point _renderPan = new Point(0, 0);
+        private Visual? _transformSource;
+        private EventHandler<AvaloniaPropertyChangedEventArgs>? _transformSourceHandler;
 
         private bool _isPalmEraserActive = false;
         private bool _lastModeBeforePalmEraser = false;
@@ -96,6 +120,17 @@ namespace ShowWrite
             PointerMoved += OnPointerMoved;
             PointerReleased += OnPointerReleased;
             PointerCaptureLost += OnPointerCaptureLost;
+
+            // 变换（缩放/拖拽）结束后延迟触发一次重绘，用于重建笔迹缓存
+            _cacheRebuildTimer = new DispatcherTimer
+            {
+                Interval = TimeSpan.FromMilliseconds(CacheRebuildDelayMs)
+            };
+            _cacheRebuildTimer.Tick += (s, e) =>
+            {
+                _cacheRebuildTimer!.Stop();
+                InvalidateVisual();
+            };
         }
 
         public void SetVideoImage(Image videoImage)
@@ -120,6 +155,55 @@ namespace ShowWrite
                 _zoomBorderOffset = zoomBorderOffset;
                 ScheduleInvalidate();
             }
+        }
+
+        /// <summary>
+        /// 设置变换动画源（ZoomBorder 的子元素）。
+        /// 摄像头画面通过该元素 RenderTransform 上的过渡动画平滑缩放/平移，
+        /// 笔迹层在渲染时直接采样该属性的当前动画值，保证两个图层逐帧同步。
+        /// </summary>
+        public void SetTransformSource(Visual? source)
+        {
+            if (_transformSource == source) return;
+
+            if (_transformSource != null && _transformSourceHandler != null)
+            {
+                _transformSource.PropertyChanged -= _transformSourceHandler;
+            }
+            _transformSource = source;
+
+            if (source != null)
+            {
+                // 过渡动画每帧都会更新 RenderTransform，借此触发笔迹层重绘
+                _transformSourceHandler = (s, e) =>
+                {
+                    if (e.Property == Visual.RenderTransformProperty)
+                    {
+                        InvalidateVisual();
+                    }
+                };
+                source.PropertyChanged += _transformSourceHandler;
+            }
+
+            ScheduleInvalidate();
+        }
+
+        /// <summary>
+        /// 采样变换源的当前（可能是动画中间态）矩阵；无有效源时回退到目标值。
+        /// </summary>
+        private (double zoom, Point pan) GetEffectiveRenderTransform()
+        {
+            if (_transformSource?.RenderTransform is { } transform)
+            {
+                var m = transform.Value;
+                // 仅接受无旋转/倾斜且等比的缩放平移矩阵
+                if (Math.Abs(m.M12) < 1e-3 && Math.Abs(m.M21) < 1e-3 &&
+                    Math.Abs(m.M11 - m.M22) < 1e-3 && Math.Abs(m.M11) > 1e-3)
+                {
+                    return (m.M11, new Point(m.M31, m.M32));
+                }
+            }
+            return (_currentZoom, _currentPan);
         }
 
         public void SetVideoSize(int width, int height)
@@ -185,6 +269,8 @@ namespace ShowWrite
             _photoWidth = photoWidth;
             _photoHeight = photoHeight;
             _isPhotoMode = true;
+            _inkCacheDirty = true; // 坐标映射变化，缓存需要重建
+            _forceContentRender = true;
             IsHitTestVisible = IsPenMode || IsEraserMode;
         }
 
@@ -193,11 +279,15 @@ namespace ShowWrite
             _isPhotoMode = false;
             _photoWidth = 0;
             _photoHeight = 0;
+            _inkCacheDirty = true;
+            _forceContentRender = true;
         }
 
         public void SetWhiteboardMode()
         {
             _isWhiteboardMode = true;
+            _inkCacheDirty = true;
+            _forceContentRender = true;
         }
 
         public void ExitWhiteboardMode()
@@ -206,6 +296,8 @@ namespace ShowWrite
             _whiteboardBackgroundPath = null;
             _whiteboardBackgroundBitmap?.Dispose();
             _whiteboardBackgroundBitmap = null;
+            _forceContentRender = true;
+            InvalidateVisual();
         }
 
         public void SetWhiteboardBackground(string? imagePath)
@@ -227,6 +319,7 @@ namespace ShowWrite
                 }
             }
 
+            _forceContentRender = true; // 背景变化需要刷新显示位图
             InvalidateVisual();
         }
 
@@ -239,12 +332,14 @@ namespace ShowWrite
         {
             _strokes.Clear();
             _strokes.AddRange(strokes);
+            _inkCacheDirty = true;
             InvalidateVisual();
         }
 
         public void ClearStrokes()
         {
             _strokes.Clear();
+            _inkCacheDirty = true;
             InvalidateVisual();
         }
 
@@ -261,18 +356,6 @@ namespace ShowWrite
             var videoX = (float)((screenPoint.X - _zoomBorderOffset.X - _currentPan.X) / _currentZoom);
             var videoY = (float)((screenPoint.Y - _zoomBorderOffset.Y - _currentPan.Y) / _currentZoom);
             return new SKPoint(videoX, videoY);
-        }
-
-        private SKPoint VideoToScreen(SKPoint videoPoint)
-        {
-            if (_isWhiteboardMode)
-            {
-                return videoPoint;
-            }
-
-            var screenX = videoPoint.X * (float)_currentZoom + (float)(_currentPan.X + _zoomBorderOffset.X);
-            var screenY = videoPoint.Y * (float)_currentZoom + (float)(_currentPan.Y + _zoomBorderOffset.Y);
-            return new SKPoint(screenX, screenY);
         }
 
         private static SKPoint ToSkPoint(Point point)
@@ -427,6 +510,7 @@ namespace ShowWrite
                 {
                     _strokes.Clear();
                     _strokes.AddRange(_tempStrokes);
+                    _inkCacheDirty = true;
                 }
                 DeactivatePalmEraser();
             }
@@ -441,6 +525,7 @@ namespace ShowWrite
                 {
                     _strokes.Clear();
                     _strokes.AddRange(_tempStrokes);
+                    _inkCacheDirty = true;
                 }
                 else
                 {
@@ -509,6 +594,7 @@ namespace ShowWrite
                 {
                     _strokes.Clear();
                     _strokes.AddRange(_tempStrokes);
+                    _inkCacheDirty = true;
                 }
                 else
                 {
@@ -546,6 +632,8 @@ namespace ShowWrite
             };
 
             _strokes.Add(stroke);
+            TryAppendStrokeToCache(stroke);
+            _forceContentRender = true; // 已提交笔迹需要刷新进显示位图
         }
 
         private List<float> ConvertScreenWidthsToVideo(List<float> screenWidths, List<float> zoomFactors)
@@ -837,6 +925,11 @@ namespace ShowWrite
         {
             base.Render(context);
 
+            // 渲染前采样变换源的当前动画值，使笔迹与摄像头画面的缩放/平移动画逐帧同步
+            var effectiveTransform = GetEffectiveRenderTransform();
+            _renderZoom = effectiveTransform.zoom;
+            _renderPan = effectiveTransform.pan;
+
             var displayWidth = (int)Bounds.Width;
             var displayHeight = (int)Bounds.Height;
             var renderScaling = GetRenderScaling();
@@ -855,82 +948,303 @@ namespace ShowWrite
                     AlphaFormat.Premul);
             }
 
-            using (var fb = _displayBitmap.Lock())
+            // 笔迹层的有效变换（白板模式下不参与 ZoomBorder 变换，恒为恒等）
+            double effZoom;
+            Point effOffset;
+            if (_isWhiteboardMode)
             {
-                var info = new SKImageInfo(fb.Size.Width, fb.Size.Height, SKColorType.Bgra8888, SKAlphaType.Premul);
-                using var surface = SKSurface.Create(info, fb.Address, fb.RowBytes);
-                var canvas = surface.Canvas;
-                canvas.Clear(SKColors.Transparent);
-                canvas.Save();
-                canvas.Scale(renderScaling, renderScaling);
+                effZoom = 1.0;
+                effOffset = new Point(0, 0);
+            }
+            else
+            {
+                effZoom = _renderZoom;
+                effOffset = new Point(_renderPan.X + _zoomBorderOffset.X, _renderPan.Y + _zoomBorderOffset.Y);
+            }
 
-                if (_isWhiteboardMode && _whiteboardBackgroundBitmap != null)
+            bool isErasing = _tempStrokes != null && (_isPalmEraserActive || (_isDrawing && _currentIsEraser));
+
+            // 是否需要重写 _displayBitmap 内容（CPU 光栅化）。
+            // 纯变换帧（拖拽/缩放、无书写）跳过 CPU 光栅化，仅用 GPU 搬运已有内容，
+            // 保证笔迹与视频画面在同一次合成中上屏，避免两层一快一慢。
+            bool contentFrame = _forceContentRender
+                || double.IsNaN(_displayZoom)
+                || isErasing
+                || (_isDrawing && !_currentIsEraser);
+
+            if (!isErasing)
+            {
+                EnsureInkCache(pixelWidth, pixelHeight);
+
+                bool cacheTransformMatches =
+                    !_inkCacheDirty &&
+                    Math.Abs(_cacheZoom - effZoom) < 0.001 &&
+                    Math.Abs(_cacheOffset.X - effOffset.X) < 0.5 &&
+                    Math.Abs(_cacheOffset.Y - effOffset.Y) < 0.5;
+
+                if (!cacheTransformMatches)
                 {
-                    var bounds = Bounds;
+                    var now = DateTime.UtcNow;
+                    bool changedSinceLastRender =
+                        double.IsNaN(_prevRenderZoom) ||
+                        Math.Abs(_prevRenderZoom - effZoom) >= 0.001 ||
+                        Math.Abs(_prevRenderOffsetX - effOffset.X) >= 0.5 ||
+                        Math.Abs(_prevRenderOffsetY - effOffset.Y) >= 0.5;
+                    if (changedSinceLastRender)
+                    {
+                        _lastTransformChangeUtc = now;
+                    }
 
-                    var imgWidth = _whiteboardBackgroundBitmap.Width;
-                    var imgHeight = _whiteboardBackgroundBitmap.Height;
+                    // 变换稳定后（或缩放漂移过大时）重建缓存以恢复清晰度；进行中则等下一帧
+                    bool stable = !changedSinceLastRender ||
+                        (now - _lastTransformChangeUtc).TotalMilliseconds >= CacheRebuildDelayMs;
+                    bool needsRebuild = _inkCacheDirty ||
+                        Math.Abs(effZoom / Math.Max(_cacheZoom, 0.001) - 1.0) > CacheRebuildScaleDrift;
 
-                    var scaleX = (float)bounds.Width / imgWidth;
-                    var scaleY = (float)bounds.Height / imgHeight;
-                    var scale = Math.Min(scaleX, scaleY);
-
-                    var destWidth = imgWidth * scale;
-                    var destHeight = imgHeight * scale;
-                    var destX = ((float)bounds.Width - destWidth) / 2;
-                    var destY = ((float)bounds.Height - destHeight) / 2;
-
-                    var destRect = new SKRect(destX, destY, destX + destWidth, destY + destHeight);
-                    canvas.DrawBitmap(_whiteboardBackgroundBitmap, destRect);
+                    if (stable || needsRebuild)
+                    {
+                        RebuildInkCache(_strokes, effZoom, effOffset, pixelWidth, pixelHeight, renderScaling);
+                        contentFrame = true; // 缓存已更新，刷新显示内容
+                    }
+                    else
+                    {
+                        ArmCacheRebuildTimer();
+                    }
                 }
 
-                if (_isDrawing && _currentIsEraser && _tempStrokes != null)
+                _prevRenderZoom = effZoom;
+                _prevRenderOffsetX = effOffset.X;
+                _prevRenderOffsetY = effOffset.Y;
+            }
+
+            if (contentFrame)
+            {
+                using (var fb = _displayBitmap.Lock())
                 {
-                    RenderStrokes(canvas, _tempStrokes);
+                    var info = new SKImageInfo(fb.Size.Width, fb.Size.Height, SKColorType.Bgra8888, SKAlphaType.Premul);
+                    using var surface = SKSurface.Create(info, fb.Address, fb.RowBytes);
+                    var canvas = surface.Canvas;
+                    canvas.Clear(SKColors.Transparent);
+                    canvas.Save();
+                    canvas.Scale(renderScaling, renderScaling);
+
+                    if (_isWhiteboardMode && _whiteboardBackgroundBitmap != null)
+                    {
+                        var bounds = Bounds;
+
+                        var imgWidth = _whiteboardBackgroundBitmap.Width;
+                        var imgHeight = _whiteboardBackgroundBitmap.Height;
+
+                        var scaleX = (float)bounds.Width / imgWidth;
+                        var scaleY = (float)bounds.Height / imgHeight;
+                        var scale = Math.Min(scaleX, scaleY);
+
+                        var destWidth = imgWidth * scale;
+                        var destHeight = imgHeight * scale;
+                        var destX = ((float)bounds.Width - destWidth) / 2;
+                        var destY = ((float)bounds.Height - destHeight) / 2;
+
+                        var destRect = new SKRect(destX, destY, destX + destWidth, destY + destHeight);
+                        canvas.DrawBitmap(_whiteboardBackgroundBitmap, destRect);
+                    }
+
+                    if (isErasing)
+                    {
+                        // 擦除期间按固定间隔用临时笔迹重建缓存，其余帧直接搬运缓存位图
+                        if (_inkCache == null || _inkCache.Width != pixelWidth || _inkCache.Height != pixelHeight ||
+                            (DateTime.UtcNow - _lastEraseRebuildUtc).TotalMilliseconds >= EraseRebuildIntervalMs)
+                        {
+                            RebuildInkCache(_tempStrokes!, effZoom, effOffset, pixelWidth, pixelHeight, renderScaling);
+                            _lastEraseRebuildUtc = DateTime.UtcNow;
+                        }
+                    }
+
+                    BlitInkCache(canvas, effZoom, effOffset);
+
+                    if (_isDrawing && !_currentIsEraser)
+                    {
+                        RenderCurrentWetStroke(canvas);
+                    }
+                    canvas.Restore();
+                }
+
+                _displayZoom = effZoom;
+                _displayOffset = effOffset;
+                _forceContentRender = false;
+
+                context.DrawImage(_displayBitmap, new Rect(_displayBitmap.Size), Bounds);
+            }
+            else
+            {
+                // 纯变换帧：按显示内容变换与当前变换的相对关系做 GPU 搬运，零 CPU 光栅化。
+                // 屏幕位置 = effOffset + k * (displayPixel - displayOffset)，k = effZoom / displayZoom
+                double k = effZoom / Math.Max(_displayZoom, 0.001);
+                bool identity =
+                    Math.Abs(k - 1.0) < 0.001 &&
+                    Math.Abs(_displayOffset.X - effOffset.X) < 0.5 &&
+                    Math.Abs(_displayOffset.Y - effOffset.Y) < 0.5;
+
+                if (identity)
+                {
+                    context.DrawImage(_displayBitmap, new Rect(_displayBitmap.Size), Bounds);
                 }
                 else
                 {
-                    RenderStrokes(canvas, _strokes);
+                    var x = effOffset.X - k * _displayOffset.X;
+                    var y = effOffset.Y - k * _displayOffset.Y;
+                    context.DrawImage(
+                        _displayBitmap,
+                        new Rect(_displayBitmap.Size),
+                        new Rect(x, y, Bounds.Width * k, Bounds.Height * k));
                 }
-                
-                if (_isDrawing && !_currentIsEraser)
-                {
-                    RenderCurrentWetStroke(canvas);
-                }
-                canvas.Restore();
             }
-
-            context.DrawImage(_displayBitmap, new Rect(_displayBitmap.Size), Bounds);
         }
 
-        private void RenderStrokes(SKCanvas canvas, List<InkStroke> strokes)
+        /// <summary>确保笔迹缓存位图已按当前显示尺寸分配。</summary>
+        private void EnsureInkCache(int pixelWidth, int pixelHeight)
         {
-            float zoom = (_isWhiteboardMode) ? 1.0f : (float)_currentZoom;
-            float renderScaling = GetRenderScaling();
+            if (_inkCache != null && _inkCache.Width == pixelWidth && _inkCache.Height == pixelHeight) return;
 
+            _inkCache?.Dispose();
+            _inkCache = new SKBitmap(new SKImageInfo(pixelWidth, pixelHeight, SKColorType.Bgra8888, SKAlphaType.Premul));
+            _inkCacheDirty = true;
+        }
+
+        /// <summary>用指定笔迹集合和变换整体重建笔迹缓存（仅在笔迹变化或变换稳定后调用）。</summary>
+        private void RebuildInkCache(List<InkStroke> strokes, double effZoom, Point effOffset, int pixelWidth, int pixelHeight, float renderScaling)
+        {
+            EnsureInkCache(pixelWidth, pixelHeight);
+
+            var info = new SKImageInfo(pixelWidth, pixelHeight, SKColorType.Bgra8888, SKAlphaType.Premul);
+            using var surface = SKSurface.Create(info, _inkCache!.GetPixels(), _inkCache.RowBytes);
+            var canvas = surface.Canvas;
+            canvas.Clear(SKColors.Transparent);
+            canvas.Scale(renderScaling, renderScaling);
+            RenderStrokes(canvas, strokes, (float)effZoom, effOffset.X, effOffset.Y, renderScaling);
+
+            _cacheZoom = effZoom;
+            _cacheOffset = effOffset;
+            _inkCacheDirty = false;
+        }
+
+        /// <summary>把缓存位图搬运到显示画布；变换不一致时按相对变换缩放/平移搬运。</summary>
+        private void BlitInkCache(SKCanvas canvas, double effZoom, Point effOffset)
+        {
+            if (_inkCache == null) return;
+
+            var destRect = new SKRect(0, 0, (float)Bounds.Width, (float)Bounds.Height);
+
+            bool matches =
+                Math.Abs(_cacheZoom - effZoom) < 0.001 &&
+                Math.Abs(_cacheOffset.X - effOffset.X) < 0.5 &&
+                Math.Abs(_cacheOffset.Y - effOffset.Y) < 0.5;
+
+            if (matches)
+            {
+                canvas.DrawBitmap(_inkCache, destRect);
+                return;
+            }
+
+            // 缩放/拖拽进行中：p' = effOffset + k * (p - cacheOffset)，k = effZoom / cacheZoom
+            float scale = (float)(effZoom / Math.Max(_cacheZoom, 0.001));
+            canvas.Save();
+            canvas.Translate((float)effOffset.X, (float)effOffset.Y);
+            canvas.Scale(scale, scale);
+            canvas.Translate((float)-_cacheOffset.X, (float)-_cacheOffset.Y);
+            canvas.DrawBitmap(_inkCache, destRect);
+            canvas.Restore();
+        }
+
+        private void ArmCacheRebuildTimer()
+        {
+            if (_cacheRebuildTimer == null) return;
+            _cacheRebuildTimer.Stop();
+            _cacheRebuildTimer.Start();
+        }
+
+        /// <summary>
+        /// 笔迹提交时尝试把它增量绘制进缓存，避免每次落笔都整体重建。
+        /// 缓存失效或变换已变化时退回标脏，由下一次渲染整体重建。
+        /// </summary>
+        private void TryAppendStrokeToCache(InkStroke stroke)
+        {
+            float renderScaling = GetRenderScaling();
+            int pixelWidth = Math.Max(1, (int)Math.Ceiling((int)Bounds.Width * renderScaling));
+            int pixelHeight = Math.Max(1, (int)Math.Ceiling((int)Bounds.Height * renderScaling));
+
+            if (_inkCache == null || _inkCacheDirty ||
+                _inkCache.Width != pixelWidth || _inkCache.Height != pixelHeight)
+            {
+                _inkCacheDirty = true;
+                return;
+            }
+
+            double effZoom;
+            Point effOffset;
+            if (_isWhiteboardMode)
+            {
+                effZoom = 1.0;
+                effOffset = new Point(0, 0);
+            }
+            else
+            {
+                var eff = GetEffectiveRenderTransform();
+                effZoom = eff.zoom;
+                effOffset = new Point(eff.pan.X + _zoomBorderOffset.X, eff.pan.Y + _zoomBorderOffset.Y);
+            }
+
+            if (Math.Abs(_cacheZoom - effZoom) >= 0.001 ||
+                Math.Abs(_cacheOffset.X - effOffset.X) >= 0.5 ||
+                Math.Abs(_cacheOffset.Y - effOffset.Y) >= 0.5)
+            {
+                _inkCacheDirty = true;
+                return;
+            }
+
+            var info = new SKImageInfo(pixelWidth, pixelHeight, SKColorType.Bgra8888, SKAlphaType.Premul);
+            using var surface = SKSurface.Create(info, _inkCache.GetPixels(), _inkCache.RowBytes);
+            var canvas = surface.Canvas;
+            canvas.Scale(renderScaling, renderScaling);
+            RenderStroke(canvas, stroke, (float)effZoom, effOffset.X, effOffset.Y, renderScaling);
+        }
+
+        private void RenderStrokes(SKCanvas canvas, List<InkStroke> strokes, float zoom, double offsetX, double offsetY, float renderScaling)
+        {
             foreach (var stroke in strokes)
             {
-                RenderStroke(canvas, stroke, zoom, renderScaling);
+                RenderStroke(canvas, stroke, zoom, offsetX, offsetY, renderScaling);
             }
         }
 
-        private void RenderStroke(SKCanvas canvas, InkStroke stroke, float zoom, float renderScaling)
+        private SKPoint VideoToScreenLocal(SKPoint videoPoint, float zoom, double offsetX, double offsetY)
+        {
+            if (_isWhiteboardMode)
+            {
+                return videoPoint;
+            }
+
+            return new SKPoint(
+                videoPoint.X * zoom + (float)offsetX,
+                videoPoint.Y * zoom + (float)offsetY);
+        }
+
+        private void RenderStroke(SKCanvas canvas, InkStroke stroke, float zoom, double offsetX, double offsetY, float renderScaling)
         {
             if (stroke.VideoPoints == null || stroke.VideoPoints.Count < 2) return;
 
             if (stroke.PointWidths != null && stroke.PointWidths.Count == stroke.VideoPoints.Count)
             {
-                RenderVariableWidthStroke(canvas, stroke, zoom, renderScaling);
+                RenderVariableWidthStroke(canvas, stroke, zoom, offsetX, offsetY, renderScaling);
             }
             else
             {
                 var displaySize = stroke.Size * zoom;
-                var paint = CreatePenPaint(stroke.Color, displaySize);
+                using var paint = CreatePenPaint(stroke.Color, displaySize);
 
                 for (int i = 1; i < stroke.VideoPoints.Count; i++)
                 {
-                    var screenFrom = VideoToScreen(stroke.VideoPoints[i - 1]);
-                    var screenTo = VideoToScreen(stroke.VideoPoints[i]);
+                    var screenFrom = VideoToScreenLocal(stroke.VideoPoints[i - 1], zoom, offsetX, offsetY);
+                    var screenTo = VideoToScreenLocal(stroke.VideoPoints[i], zoom, offsetX, offsetY);
                     canvas.DrawLine(
                         new SKPoint(screenFrom.X / renderScaling, screenFrom.Y / renderScaling),
                         new SKPoint(screenTo.X / renderScaling, screenTo.Y / renderScaling),
@@ -939,7 +1253,7 @@ namespace ShowWrite
             }
         }
 
-        private void RenderVariableWidthStroke(SKCanvas canvas, InkStroke stroke, float zoom, float renderScaling)
+        private void RenderVariableWidthStroke(SKCanvas canvas, InkStroke stroke, float zoom, double offsetX, double offsetY, float renderScaling)
         {
             if (stroke.VideoPoints == null || stroke.PointWidths == null) return;
 
@@ -952,8 +1266,8 @@ namespace ShowWrite
 
             for (int i = 0; i < stroke.VideoPoints.Count - 1; i++)
             {
-                var p1 = VideoToScreen(stroke.VideoPoints[i]);
-                var p2 = VideoToScreen(stroke.VideoPoints[i + 1]);
+                var p1 = VideoToScreenLocal(stroke.VideoPoints[i], zoom, offsetX, offsetY);
+                var p2 = VideoToScreenLocal(stroke.VideoPoints[i + 1], zoom, offsetX, offsetY);
                 var w1 = stroke.PointWidths[i] * zoom;
                 var w2 = stroke.PointWidths[i + 1] * zoom;
 
@@ -1009,7 +1323,9 @@ namespace ShowWrite
                 return;
             }
 
-            int subdivisions = Math.Max(2, (int)(length / 1f));
+            // 按笔画宽度的 1/4 步进采样即可保证平滑，大幅减少粗笔画的绘制调用数
+            float step = Math.Max(1f, Math.Min(w1, w2) * 0.25f);
+            int subdivisions = Math.Max(2, (int)(length / step));
 
             for (int i = 0; i <= subdivisions; i++)
             {
@@ -1031,6 +1347,7 @@ namespace ShowWrite
         {
             _strokes.Clear();
             ResetCurrentInteraction();
+            _inkCacheDirty = true;
             InvalidateVisual();
         }
 
@@ -1039,6 +1356,7 @@ namespace ShowWrite
             if (_strokes.Count == 0) return;
 
             _strokes.RemoveAt(_strokes.Count - 1);
+            _inkCacheDirty = true;
             InvalidateVisual();
         }
 
@@ -1216,6 +1534,13 @@ namespace ShowWrite
 
         public void Dispose()
         {
+            if (_transformSource != null && _transformSourceHandler != null)
+            {
+                _transformSource.PropertyChanged -= _transformSourceHandler;
+            }
+            _cacheRebuildTimer?.Stop();
+            _inkCache?.Dispose();
+            _inkCache = null;
             _displayBitmap?.Dispose();
         }
     }

@@ -210,20 +210,16 @@
                         EnableZoom="True"
                         EnableGestureZoom="False"
                         EnableGestureTranslation="True"
+                        EnableAnimations="False"
                         ClipToBounds="True"
                         Focusable="True"
                         PanButton="Left"
                         Background="{DynamicResource ThemeVideoBackground}">
-            <Grid x:Name="VideoAreaContainer" 
-                  HorizontalAlignment="Left" 
+            <Grid x:Name="VideoAreaContainer"
+                  HorizontalAlignment="Left"
                   VerticalAlignment="Top"
                   Background="Transparent"
                   RenderTransformOrigin="0,0">
-                <Grid.Transitions>
-                    <Transitions>
-                        <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.15" Easing="CubicEaseOut"/>
-                    </Transitions>
-                </Grid.Transitions>
                 <Image x:Name="VideoImage" Stretch="Uniform" HorizontalAlignment="Left" VerticalAlignment="Top"/>
             
             <Canvas x:Name="KeystoneOverlayCanvas" IsVisible="False">

@@ -315,6 +315,8 @@ namespace ShowWrite
             _cameraService.UsingCachedCameras += OnUsingCachedCameras;
 
             ZoomBorder.ZoomChanged += OnZoomChanged;
+            // 笔迹层与摄像头画面共用 VideoAreaContainer 的（动画）变换，保证缩放/拖拽时两层同步
+            InkCanvasOverlay.SetTransformSource(VideoAreaContainer);
             ZoomBorder.AddHandler(PointerPressedEvent, ZoomBorder_PointerPressed, RoutingStrategies.Tunnel, true);
             ZoomBorder.AddHandler(PointerMovedEvent, ZoomBorder_PointerMoved, RoutingStrategies.Tunnel, true);
             ZoomBorder.AddHandler(PointerReleasedEvent, ZoomBorder_PointerReleased, RoutingStrategies.Tunnel, true);
